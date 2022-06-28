@@ -34,8 +34,12 @@ class Array2D
                           const size_t col_min, const size_t col_max);
         Array2D operator + (Array2D const &arr); // basic addition
         bool copy_sum(Array2D const &arr); // basic addition, writing to current object
+        Array2D operator - (Array2D const &arr); // basic subtraction
+        bool copy_sub(Array2D const &arr); // basic subtraction, writing to current object
         Array2D operator * (Array2D const &arr); // basic multiplication
         bool copy_mul(Array2D const &arr); // basic multiplication, writing to current object
+        Array2D operator / (Array2D const &arr); // basic division
+        bool copy_div(Array2D const &arr); // basic division, writing to current object
         Array2D pow(const T num); // raises array to a constant power
         void copy_pow(const T num); // raises array to a constant power, overwriting current object
         bool swap_dim(); // used for switching from row to column vector
@@ -291,6 +295,53 @@ bool Array2D<T>::copy_sum(Array2D<T> const &arr) {
 }
 
 template <typename T>
+Array2D<T> Array2D<T>::operator - (Array2D<T> const &arr) {
+    /*
+    basic subtraction between matrices
+    
+    Input(s):
+    arr : matrix being subtracted from the current matrix
+
+    Output(s):
+    diff : difference of the two matrices, or zero-size matrix if they are different sizes
+    */
+    if ((arr.get_rows() != this->rows) || (arr.get_cols() != this->cols)) {return Array2D<T>();} // handle case of different sizes
+    else {
+        Array2D<T> diff = Array2D<T>(this); // get copy of given array
+        for (size_t i = 0; i < this->rows; i++) {
+            for (size_t j = 0; j < this->cols; j++) {
+                diff.set(diff.get(i,j) - arr.get(i,j), i, j);
+            }
+        }
+        return diff;
+    }
+}
+
+template <typename T>
+bool Array2D<T>::copy_sub(Array2D<T> const &arr) {
+    /*
+    basic subtraction between matrices, overwriting the current matrix
+    
+    Input(s):
+    arr : matrix being subtracted from the current matrix
+
+    Output(s):
+    suc : true if matrices are the same size, false otherwise
+
+    Note(s): does nothing if matrices are different sizes
+    */
+    if ((arr.get_rows() != this->rows) || (arr.get_cols() != this->cols)) {return false;} // handle case of different sizes
+    else {
+        for (size_t i = 0; i < this->rows; i++) {
+            for (size_t j = 0; j < this->cols; j++) {
+                (this->arr)[i*(this->cols) + j] -= arr.get(i, j);
+            }
+        }
+        return true;
+    }
+}
+
+template <typename T>
 Array2D<T> Array2D<T>::operator * (Array2D<T> const &arr) {
     /*
     basic multiplication between matrices
@@ -332,6 +383,53 @@ bool Array2D<T>::copy_mul(Array2D<T> const &arr) {
         for (size_t i = 0; i < this->rows; i++) {
             for (size_t j = 0; j < this->cols; j++) {
                 (this->arr)[i*(this->cols) + j] *= arr.get(i, j);
+            }
+        }
+        return true;
+    }
+}
+
+template <typename T>
+Array2D<T> Array2D<T>::operator / (Array2D<T> const &arr) {
+    /*
+    basic division between matrices
+    
+    Input(s):
+    arr : matrix dividing the current matrix
+
+    Output(s):
+    prod : quotient of the two matrices, or zero-size matrix if they are different sizes
+    */
+    if ((arr.get_rows() != this->rows) || (arr.get_cols() != this->cols)) {return Array2D<T>();} // handle case of different sizes
+    else {
+        Array2D<T> prod = Array2D<T>(this); // get copy of given array
+        for (size_t i = 0; i < this->rows; i++) {
+            for (size_t j = 0; j < this->cols; j++) {
+                prod.set(prod.get(i,j)/arr.get(i,j), i, j)
+            }
+        }
+        return prod;
+    }
+}
+
+template <typename T>
+bool Array2D<T>::copy_div(Array2D<T> const &arr) {
+    /*
+    basic division between matrices, overwriting the current matrix
+    
+    Input(s):
+    arr : matrix being divided into the current matrix
+
+    Output(s):
+    suc : true if matrices are the same size, false otherwise
+
+    Note(s): does nothing if matrices are different sizes
+    */
+    if ((arr.get_rows() != this->rows) || (arr.get_cols() != this->cols)) {return false;} // handle case of different sizes
+    else {
+        for (size_t i = 0; i < this->rows; i++) {
+            for (size_t j = 0; j < this->cols; j++) {
+                (this->arr)[i*(this->cols) + j] /= arr.get(i, j);
             }
         }
         return true;
