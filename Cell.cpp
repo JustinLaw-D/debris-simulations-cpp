@@ -122,3 +122,11 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, Array2D<double> N_i, si
 }
 
 void Cell::update_lethal_N() {return;} // TODO
+
+Cell::~Cell() {
+    // basic class destructor
+    // Note : the Cell is not assumed to own the logL_edges and chi_edges arrays, and hence
+    //        will not free them
+    delete [] this->ascending; delete [] this->lethal_rb_N; 
+    delete [] this->lethal_sat_N; delete [] this->event_list;
+}

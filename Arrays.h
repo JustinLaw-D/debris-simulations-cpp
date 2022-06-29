@@ -72,6 +72,8 @@ Array2D<T>::Array2D(T * arr, const size_t rows, const size_t cols) {
 
     Output(s):
     arr_out : Array2D object with specified parameters
+
+    Note(s): Array2D takes ownership of the given raw array
     */
     this->arr = arr; this->rows = rows; this->cols = cols;
 }
