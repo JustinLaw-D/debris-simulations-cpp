@@ -16,14 +16,79 @@ class Array2D
         T * arr; // pointer to the array
         size_t rows; // number of rows and columns
         size_t cols;
+        Array2D(T * arr, const size_t rows, const size_t cols); // explicit constructor
 
     public:
         Array2D(); // basic constructor, creates size zero array
-        Array2D(T * arr, const size_t rows, const size_t cols); // explicit constructor
+        Array2D(const size_t rows, const size_t cols); // another basic constructor 
         Array2D(const Array2D &arr); // copy constructor
-        static Array2D zeroes_int(const size_t rows, const size_t cols); // creates array of all zeros
-        static Array2D zeroes_double(const size_t rows, const size_t cols); // creates array of all zeros
+
+        static Array2D zeroes_int(const size_t rows, const size_t cols) {
+            /*
+            initializes an array of all zeros, of type int
+
+            Input(s):
+            rows : number of rows in the array
+            cols : number of columns in the array
+
+            Output(s):
+            arr_out : Array2D object full of zeros
+            */
+            int * arr = new int[rows*cols];
+            for (size_t i = 0; i < rows*cols; i++) {arr[i] = 0;}
+            return Array2D<int>(arr, rows, cols);
+        }
+
+        static Array2D * zeroes_int_dyn(const size_t rows, const size_t cols) {
+            /*
+            initializes a dynamically allocated array of all zeros, of type int
+
+            Input(s):
+            rows : number of rows in the array
+            cols : number of columns in the array
+
+            Output(s):
+            arr_out : pointer to Array2D object full of zeros
+            */
+            int * arr = new int[rows*cols];
+            for (size_t i = 0; i < rows*cols; i++) {arr[i] = 0;}
+            return new Array2D<int>(arr, rows, cols);
+        }
+
+        static Array2D zeroes_double(const size_t rows, const size_t cols) {
+            /*
+            initializes an array of all zeros, of type double
+
+            Input(s):
+            rows : number of rows in the array
+            cols : number of columns in the array
+
+            Output(s):
+            arr_out : Array2D object full of zeros
+            */
+            double * arr = new double[rows*cols];
+            for (size_t i = 0; i < rows*cols; i++) {arr[i] = 0.0;}
+            return Array2D<double>(arr, rows, cols);
+        }
+
+        static Array2D * zeroes_double_dyn(const size_t rows, const size_t cols) {
+            /*
+            initializes a dynamically allocated array of all zeros, of type double
+
+            Input(s):
+            rows : number of rows in the array
+            cols : number of columns in the array
+
+            Output(s):
+            arr_out : Array2D object full of zeros
+            */
+            double * arr = new double[rows*cols];
+            for (size_t i = 0; i < rows*cols; i++) {arr[i] = 0.0;}
+            return new Array2D<double>(arr, rows, cols);
+        }
+
         static Array2D fill(const T val, const size_t rows, const size_t cols); // creates array with copies of given value
+        static Array2D * fill_dyn(const T val, const size_t rows, const size_t cols); // same thing, but returns a pointer
         inline bool is_zero(); // check if this is a size-zero array
         inline size_t get_rows() const; // get the number of rows/columns
         inline size_t get_cols() const;
@@ -61,6 +126,21 @@ Array2D<T>::Array2D() {
 }
 
 template <typename T>
+Array2D<T>::Array2D(const size_t rows, const size_t cols) {
+    /*
+    most basic initializer for a 2-d array
+
+    Input(s):
+    rows : number of rows in the array
+    cols : number of columns in the array
+
+    Output(s):
+    arr_out : Array2D object with specified size
+    */
+    this->arr = new T[rows*cols]; this->rows = rows; this->cols = cols;
+}
+
+template <typename T>
 Array2D<T>::Array2D(T * arr, const size_t rows, const size_t cols) {
     /*
     most basic initializer for a 2-d array
@@ -73,7 +153,8 @@ Array2D<T>::Array2D(T * arr, const size_t rows, const size_t cols) {
     Output(s):
     arr_out : Array2D object with specified parameters
 
-    Note(s): Array2D takes ownership of the given raw array
+    Note(s): Array2D takes ownership of the given raw array, and must be given
+             a raw array that was allocated on the heap
     */
     this->arr = arr; this->rows = rows; this->cols = cols;
 }
@@ -99,40 +180,6 @@ Array2D<T>::Array2D(const Array2D<T> &arr) {
     }
 }
 
-template <>
-Array2D<int> Array2D<int>::zeroes_int(const size_t rows, const size_t cols) {
-    /*
-    initializes an array of all zeros, of type int
-
-    Input(s):
-    rows : number of rows in the array
-    cols : number of columns in the array
-
-    Output(s):
-    arr_out : Array2D object full of zeros
-    */
-    int * arr = new int[rows*cols];
-    for (size_t i = 0; i < rows*cols; i++) {arr[i] = 0;}
-    return Array2D<int>(arr, rows, cols);
-}
-
-template <>
-Array2D<double> Array2D<double>::zeroes_double(const size_t rows, const size_t cols) {
-    /*
-    initializes an array of all zeros, of type double
-
-    Input(s):
-    rows : number of rows in the array
-    cols : number of columns in the array
-
-    Output(s):
-    arr_out : Array2D object full of zeros
-    */
-    double * arr = new double[rows*cols];
-    for (size_t i = 0; i < rows*cols; i++) {arr[i] = 0.0;}
-    return Array2D<double>(arr, rows, cols);
-}
-
 template <typename T>
 Array2D<T> Array2D<T>::fill(const T val, const size_t rows, const size_t cols) {
     /*
@@ -149,6 +196,24 @@ Array2D<T> Array2D<T>::fill(const T val, const size_t rows, const size_t cols) {
     T * arr = new T[rows*cols];
     for (size_t i = 0; i < rows*cols; i++) {arr[i] = val;}
     return Array2D<T>(arr, rows, cols);
+}
+
+template <typename T>
+Array2D<T> * Array2D<T>::fill_dyn(const T val, const size_t rows, const size_t cols) {
+    /*
+    initializes a pointer to an array with all elements set to the given value
+
+    Input(s):
+    val : value to fill the array with
+    rows : number of rows in the array
+    cols : number of columns in the array
+
+    Output(s):
+    arr_out : pointer to Array2D object full of specified value
+    */
+    T * arr = new T[rows*cols];
+    for (size_t i = 0; i < rows*cols; i++) {arr[i] = val;}
+    return new Array2D<T>(arr, rows, cols);
 }
 
 template <typename T>
@@ -407,7 +472,7 @@ Array2D<T> Array2D<T>::operator / (Array2D<T> const &arr) {
         Array2D<T> prod = Array2D<T>(this); // get copy of given array
         for (size_t i = 0; i < this->rows; i++) {
             for (size_t j = 0; j < this->cols; j++) {
-                prod.set(prod.get(i,j)/arr.get(i,j), i, j)
+                prod.set(prod.get(i,j)/arr.get(i,j), i, j);
             }
         }
         return prod;
