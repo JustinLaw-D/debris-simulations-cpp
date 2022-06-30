@@ -3,6 +3,7 @@
 #include "Arrays.h"
 #include "ObjectsEvents.h"
 #include "Cell.h"
+#include "AtmosphericDecayModels.h"
 #include <iostream>
 using namespace std;
 
@@ -60,8 +61,13 @@ void cell_test() {
     cout << "Cell made!" << endl;
 }
 
+void atmospheric_test() {
+    cout << drag_lifetime_default(600.0+25.0/2.0, 600.0-25.0/2.0, 1.0/(20.0*2.2), 50) << endl;
+}
+
 int main() {
     //array_test();
-    cell_test();
+    //cell_test();
+    atmospheric_test();
     return 0;
 }

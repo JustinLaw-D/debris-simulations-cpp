@@ -3,12 +3,9 @@
 #include "Cell.h"
 #include "Arrays.h"
 #include "ObjectsEvents.h"
+#include "Constants.h"
 #include <vector>
 #include <cmath>
-
-const double G = 6.6743e-11; // Gravitation constant, standard units
-const double Re = 6371; // radius of the Earth (km)
-const double Me = 5.97219e24; // mass of Earth (kg)
 
 using namespace std;
 
@@ -37,6 +34,8 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, Array2D<double> & N_i, 
 
     Output(s):
     Cell instance
+
+    Note(s) : event_list must be a dynamically allocated array
     */
     
     this->num_sat_types = num_sat_types;
