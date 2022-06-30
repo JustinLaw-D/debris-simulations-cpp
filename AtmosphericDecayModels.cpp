@@ -50,8 +50,6 @@ double density(const double alt, double t, const size_t mo0) {
         rho = pow(10, (logdenHL[i]+(logdenHL[i+1]-logdenHL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
     }
 
-    if (t == 0.0) {cout << rho << endl;}
-
     return rho;
 }
 
