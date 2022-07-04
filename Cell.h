@@ -71,7 +71,7 @@ class Cell
         void dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt, Array2D<double> &dDdt, Array2D<double> &dRdt, 
                        Array2D<double> &S_out, Array2D<double> &S_dout, Array2D<double> &D_out, Array2D<double> &R_out,
                        Array2D<double> &N_out, Array2D<double> &D_dt, Array2D<double> &DR_dt, Array2D<double> &R_dt, 
-                       Array2D<double> **CS_dt, Array2D<double> **RS_dt, Array2D<double> &expl_S, Array2D<double> &expl_R);
+                       Array2D<double> **CS_dt, Array2D<double> **CR_dt, Array2D<double> &expl_S, Array2D<double> &expl_R);
         void update_cat_N(); // updates catestrophic debris tables
         ~Cell(); // destructor
 };

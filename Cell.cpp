@@ -162,7 +162,7 @@ void Cell::update_cat_N() {
 void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt, Array2D<double> &dDdt, Array2D<double> &dRdt, 
                      Array2D<double> &S_out, Array2D<double> &S_dout, Array2D<double> &D_out, Array2D<double> &R_out,
                      Array2D<double> &N_out, Array2D<double> &D_dt, Array2D<double> &DR_dt, Array2D<double> &R_dt, 
-                     Array2D<double> **CS_dt, Array2D<double> **RS_dt, Array2D<double> &expl_S, Array2D<double> &expl_R) {
+                     Array2D<double> **CS_dt, Array2D<double> **CR_dt, Array2D<double> &expl_S, Array2D<double> &expl_R) {
     /*
     calculates the rate of collisions and decays from each debris bin, the rate
     of decaying/de-orbiting satellites, the rate of launches/deorbit starts of satallites, 
@@ -173,10 +173,13 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
 
     Output(s) (by reference):
     dSdt : array of rate of change of the number of live satellites in the cell of each type due to only processes
-            withing the cell (yr^(-1))
-    dS_ddt : array of rate of change of the number of de-orbiting satellites in the cell of each type (yr^(-1))
-    dDdt : array of rate of change of the number of derelict satellites in the cell of each type (yr^(-1))
+            withing the cell (not including ascending satellites) (yr^(-1))
+    dS_ddt : array of rate of change of the number of de-orbiting satellites in the cell of each type
+             (not including de-orbiting satellites) (yr^(-1))
+    dDdt : array of rate of change of the number of derelict satellites in the cell of each type
+           (not including decaying derelicts) (yr^(-1))
     dRdt : array of rate of change of number of rocket bodies in the cell of each type (yr^(-1))
+           (not including decaying rocket bodies)
     S_out : array of rate of satellites ascending from the cell of each type (yr^(-1))
     S_dout : array of rate of satellites de-orbiting from the cell of each type (yr^(-1))
     D_out : array of rate of satellites decaying from the cell of each type (yr^(-1))
@@ -199,11 +202,11 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
     // setup some temp parameters
     double sigma_loc_km0; double R1; double sigma_loc_km1; double sigma_comb; double n;
     
-    // start with satellite collisions
+    // start with satellite collisions/events
     for (size_t i = 0; i < this->num_sat_types; i++) {
 
         // get current parameters
-        double S0 = this->S->at(time)->get(i, 0);
+        double S0 = this->S->at(time)->get(i,0);
         double SD0 = this->S_d->at(time)->get(i,0);
         double D0 = this->D->at(time)->get(i,0);
         sigma_loc_km0 = this->sigma_s_km->get(i,0);
@@ -299,8 +302,86 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
             dDdt.set(dDdt.get(i,0) - dDRdt_loc, i, 0);
             dRdt.set(dRdt.get(j,0) - dSRdt_loc - dS_dRdt_loc - dDRdt_loc, j, 0);
         }
+
+        // handle decays/explosions
+        double expl_S = (this->expl_rate_L->get(i, 0))*S0/100.0; // calculate explosion rates
+        double expl_S_d = (this->expl_rate_L->get(i, 0))*SD0/100.0;
+        double expl_D = (this->expl_rate_D->get(i, 0))*D0/100.0;
+        double decay_S = D0/(this->tau_s->get(i, 0)); // satellites ascending/descending, switching to de-orbit
+        double kill_S = S0/(this->del_t->get(i, 0));
+        double deorbit_S = SD0/(this->tau_do->get(i, 0));
+        double ascend_S = S0/(this->up_time->get(i, 0));
+
+        // update return values
+        double P_loc = this->P->get(i,0);
+        dSdt.set(dSdt.get(i,0) - expl_S - decay_S - kill_S - ascend_S, i, 0);
+        dS_ddt.set(dS_ddt.get(i,0) + P_loc*kill_S - deorbit_S, i, 0);
+        dDdt.set(dDdt.get(i,0) + kill_S*(1-P_loc) - decay_S, i, 0);
+        S_out.set(S_out.get(i,0) + ascend_S, i, 0);
+        S_dout.set(S_dout.get(i,0) + deorbit_S, i, 0);
+        D_out.set(D_out.get(i,0) + decay_S, i, 0);
     }
-    // TODO ROCKET-ROCKET COLLISIONS, DECAYS AND UP-TIMES
+
+    // handle rocket-body only events
+    for (size_t i = 0; i < this->num_rb_types; i++) {
+        // setup temp local parameter
+        double dRRdt_loc; double dRdt_loc;
+        Array2D<double> * CR_dt_loc = CR_dt[i]; // pointer to array for this satellite type
+
+        // get relevant local values
+        double R0 = this->R->at(i)->get(time,0);
+        sigma_loc_km0 = this->sigma_rb_km->get(i,0);
+
+        // handle rocket-debris collisions
+        for (size_t j = 0; j < this->num_L; j++) {
+            for (size_t k = 0; k < this->num_chi; k++) {
+                n = N.get(j,k)/(this->V); // calculate debris density
+                dRdt_loc = n*sigma_loc_km0*(this->vyr)*R0; // never avoids
+                // update return values
+                dRdt.set(dRdt.get(i,0) - dRdt_loc, i, 0);
+                CR_dt_loc->set(CR_dt_loc->get(i,j) + dRdt_loc, i, j);
+            }
+        }
+
+        // handle rocket-rocket collisions
+        for (size_t j = 0; j < this->num_rb_types; j++) {
+            // get local parameters for this rocket type
+            R1 = this->R->at(i)->get(time,0);
+            sigma_loc_km1 = this->sigma_rb_km->get(i,0);
+            
+            // calculate combined cross-section
+            sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2*sqrt(sigma_loc_km0*sigma_loc_km1);
+
+            // calculate collision rate
+            dRRdt_loc = R0*R1*sigma_comb*(this->vyr)/(this->V);
+
+            // update return values
+            if (i <= j) { // avoid double counting
+                R_dt.set(R_dt.get(i,j) + dRRdt_loc, i, j);
+            }
+            if (i == j) { // destroys two of the same type in one go
+                dRdt.set(dRdt.get(i,0) - 2*dRRdt_loc, i, 0);
+            } else {
+                dRdt.set(dRdt.get(i,0) - dRRdt_loc, i, 0);
+            }
+        }
+
+        // handle decays/explosions
+        double expl_R = (this->expl_rate_R->get(i, 0))*R0/100.0; // calculate explosion rates
+        double decay_R = R0/(this->tau_rb->get(i, 0)); // calculate decay rates
+
+        // update return values
+        dRdt.set(dRdt.get(i,0) - expl_R - decay_R, i, 0);
+        R_out.set(R_out.get(i,0) + decay_R, i, 0);
+    }
+
+    // handle debris decays
+    for (size_t i = 0; i < this->num_L; i++) {
+        for (size_t j = 0; j < this->num_chi; j++) {
+            N_out.set(N.get(i,j)/(this->tau_N->get(i,j)), i, j);
+        }
+    }
+
 }
 
 Cell::~Cell() {
