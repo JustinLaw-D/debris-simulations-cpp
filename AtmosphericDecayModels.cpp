@@ -140,20 +140,3 @@ double drag_lifetime_default(const double alt_i, const double alt_f, const doubl
     */
     return drag_lifetime(alt_i, alt_f, a_over_m, 2.2, 100.0/(60.0*60.0*24.0*365.25), m0, 0.0, 100.0, 1.0/100.0, 1000.0);
 }
-
-bool need_update(double t_curr, double t_last) {
-    /*
-    outputs whether or not the atmospheric drag lifetime needs to be updated
-
-    Input(s):
-    t_curr : current time since "start" of simulation (yr)
-    t_last : time the lifetime was last updated (yr, since start of simulation)
-
-    Output(s):
-    update : True is the value needs to be updated, False otherwise
-
-    Note(s): default function, call for an update once per month
-    */
-
-    return t_curr - t_last > 1.0/12.0;
-}

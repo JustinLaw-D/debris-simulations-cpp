@@ -4,6 +4,7 @@
         "cmath": "cpp",
         "ostream": "cpp",
         "new": "cpp",
-        "cstddef": "cpp"
+        "cstddef": "cpp",
+        "array": "cpp"
     }
 }

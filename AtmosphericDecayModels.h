@@ -14,5 +14,3 @@ double drag_lifetime(const double alt_i, const double alt_f, const double a_over
                     
 // same thing but with default values
 double drag_lifetime_default(const double alt_i, const double alt_f, const double a_over_m, const size_t m0);
-
-bool need_update(double t_curr, double t_last); // determines if the drag lifetimes need to be updated
