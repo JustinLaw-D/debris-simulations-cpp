@@ -16,6 +16,7 @@ struct Satellite
     double sigma; // cross-section of the satellite (m^2)
     double lam; // satellite launch rate (1/yr)
     double del_t; // live satellite lifetime (yr)
+    double fail_t; // failure lifetime of ascending satellites (yr)
     double tau_do; // satellite de-orbiting time (yr)
     double target_alt; // satellite target altitude (km)
     double up_time; // time it takes satellite to ascend through the cell (yr)
@@ -29,9 +30,9 @@ struct Satellite
 };
 
 inline Satellite make_sat(vector<double> S, vector<double> S_d, vector<double> D, double m, double sigma, double lam,
-                          double del_t, double tau_do, double target_alt, double up_time, double alphaS, double alphaD,
-                          double alphaN, double alphaR, double P, double AM, double tau, double C, double expl_rate_L,
-                          double expl_rate_D) {
+                          double del_t, double fail_t, double tau_do, double target_alt, double up_time, double alphaS, 
+                          double alphaD, double alphaN, double alphaR, double P, double AM, double tau, double C, 
+                          double expl_rate_L, double expl_rate_D) {
     /*
     basic constructor for Satellite
 
@@ -43,6 +44,7 @@ inline Satellite make_sat(vector<double> S, vector<double> S_d, vector<double> D
     sigma : cross-section of the satellite (m^2)
     lam : satellite launch rate (1/yr)
     del_t : live satellite lifetime (yr)
+    fail_t : failure lifetime of ascending satellites (yr)
     tau_do : satellite de-orbiting time (yr)
     target_alt : satellite target altitude (km)
     up_time : time it takes satellite to ascend through the cell (yr)
@@ -61,7 +63,7 @@ inline Satellite make_sat(vector<double> S, vector<double> S_d, vector<double> D
     sat : Satellite object
     */
     Satellite sat = {
-        S, S_d, D, m, sigma, lam, del_t, tau_do, target_alt, up_time, alphaS, alphaD, alphaN, alphaR,
+        S, S_d, D, m, sigma, lam, del_t, fail_t, tau_do, target_alt, up_time, alphaS, alphaD, alphaN, alphaR,
         P, AM, tau, C, expl_rate_L, expl_rate_D
     };
     return sat;
@@ -175,10 +177,10 @@ expl_list : list of explosions occuring in the event
 
 Output(s): None
 */
-typedef void (*event_func)(const Array2D<double>&, const Array2D<double>&, const Array2D<double>&, size_t, 
-                           const Array2D<double>&, size_t, const Array2D<double>&, const double*, size_t, 
-                           const double*, size_t, Array2D<double>&, Array2D<double>&, Array2D<double>&, 
-                           Array2D<double>&, Array2D<double>&, vector<Coll>&, vector<Expl>&);
+typedef void (*event_func)(const Array1D<double>&, const Array1D<double>&, const Array1D<double>&, 
+                           const Array1D<double>&, const ArrayND<double,2>&, const Array1D<double>&, 
+                           const Array1D<double>&, Array1D<double>&, Array1D<double>&, Array1D<double>&, 
+                           Array1D<double>&, ArrayND<double,2>&, vector<Coll>&, vector<Expl>&);
 
 struct Event 
 {
@@ -205,8 +207,7 @@ inline Event make_event(vector<double> times, double freq, double alt, event_fun
     return event;
 }
 
-void default_event(const Array2D<double>& S, const Array2D<double>& S_d, const Array2D<double>& D, size_t num_sat_types, 
-                   const Array2D<double>& R, size_t num_rb_types, const Array2D<double>& N, const double* logL_bins, 
-                   size_t num_L, const double* chi_bins, size_t num_chi, Array2D<double>& dS, Array2D<double>& dS_d, 
-                   Array2D<double>& dD, Array2D<double>& dR, Array2D<double>& dN, vector<Coll>& coll_list, 
-                   vector<Expl>& expl_list); // dummy default event
+void default_event(const Array1D<double>& S, const Array1D<double>& S_d, const Array1D<double>& D, const Array1D<double>& R, 
+                   const ArrayND<double,2>& N, const Array1D<double>& logL_bins, const Array1D<double>& chi_bins,
+                   Array1D<double>& dS, Array1D<double>& dS_d, Array1D<double>& dD, Array1D<double>& dR, ArrayND<double,2>& dN,
+                   vector<Coll>& coll_list, vector<Expl>& expl_list); // dummy default event

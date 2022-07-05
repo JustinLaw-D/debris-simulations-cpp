@@ -1,38 +1,64 @@
 // this is just here for basic testing
 
 #include "Arrays.h"
+#include "AtmosphericDecayModels.h"
 #include "ObjectsEvents.h"
 #include "Cell.h"
-#include "AtmosphericDecayModels.h"
+#include <array>
+#include <vector>
 #include <iostream>
 using namespace std;
 
 void array_test() {
-    Array2D<double> arr = Array2D<double>::zeroes_double(3, 3);
+    const array<size_t,3> dim = {3,3,3};
+    ArrayND<double, 3> arr = ArrayND<double, 3>::zeroes_double(dim);
     arr.print();
     cout << endl;
-    arr.set(10.0,1,2);
+    ArrayND<int, 2> * arr2 = ArrayND<int, 2>::zeroes_int_dyn(array<size_t,2>({3,2}));
+    arr2->print();
+    cout << endl;
+    arr2->at(array<size_t,2>({1,0})) = 10;
+    arr2->copy_sum(571);
+    arr2->print();
+    cout << endl;
+    ArrayND<bool, 2> arr3 = ArrayND<bool, 2>::fill(true, array<size_t, 2>({6,2}));
+    arr3.print();
+    cout << endl;
+    ArrayND<bool, 2> * arr4 = new ArrayND<bool, 2>(arr3);
+    arr4->print();
+    cout << endl;
+    ArrayND<float, 2> * arr5 = new ArrayND<float, 2>(array<size_t, 2>({2,2}));
+    for (size_t i = 0; i < 2; i++) {
+        for (size_t j = 0; j < 2; j++) {
+            arr5->at(array<size_t, 2>({i,j})) = 0.0;
+        }
+    }
+    arr5->print();
+    cout << endl;
+}
+
+void array1D_test() {
+    Array1D<double> arr = Array1D<double>::zeroes_double(5);
     arr.print();
     cout << endl;
-    Array2D<double> arr2 = Array2D<double>(arr);
-    arr2.set(50.0,0,0);
-    arr2.print();
+    Array1D<int> * arr2 = Array1D<int>::zeroes_int_dyn(3);
+    arr2->print();
     cout << endl;
-    arr.print();
+    arr2->at(1) = 10;
+    arr2->copy_sum(571);
+    arr2->print();
     cout << endl;
-    arr2.get_range(0, 2, 0, 2).print();
+    Array1D<bool> arr3 = Array1D<bool>::fill(true, 6);
+    arr3.print();
     cout << endl;
-    Array2D<double> sum = arr + arr2;
-    sum.print();
+    Array1D<bool> * arr4 = new Array1D<bool>(arr3);
+    arr4->print();
     cout << endl;
-    arr.copy_sum(arr2);
-    arr.print();
-    cout << endl;
-    Array2D<int> vec = Array2D<int>::zeroes_int(1,5);
-    vec.print();
-    cout << endl;
-    vec.swap_dim();
-    vec.print();
+    Array1D<float> * arr5 = new Array1D<float>(10);
+    for (size_t i = 0; i < 10; i++) {
+        arr5->at(i) = 0.0;
+    }
+    arr5->print();
     cout << endl;
 }
 
@@ -40,18 +66,19 @@ void array_test() {
 void cell_test() {
     vector<double> S = {5}; vector<double> S_d = {2}; vector<double> D = {0};
     Satellite sat = {S, S_d, D, 250.0, 10.0, 200.0, 5.0, 2.0, 550.0, 1/12, 0.0, 0.2, 0.2, 0.2,
-                     0.95, 1/(20*2.2), 5.0, 1.0, 0.0, 0.0};
+                     0.95, 1/(20*2.2), 5.0, 5.0, 1.0, 0.0, 0.0};
     vector<double> R = {10};
     RocketBody rb = {R, 1000.0, 20.0, 0.0, 1/(20*2.2), 5.0, 1.0, 1.0};
     size_t num_sat_types = 1; size_t num_rb_types = 1;
     size_t num_L = 10; size_t num_chi = 10;
-    double chi_edges[11]; double logL_edges[11];
+    Array1D<double> * chi_edges = Array1D<double>::zeroes_double_dyn(11);
+    Array1D<double> * logL_edges = Array1D<double>::zeroes_double_dyn(11);
     for (size_t i = 0; i < num_L + 1; i++) {
-        chi_edges[i] = -2.0 + 0.35*(static_cast<double>(i));
-        logL_edges[i] = -3 + 0.3*(static_cast<double>(i));
+        chi_edges->at(i) = -2.0 + 0.35*(static_cast<double>(i));
+        logL_edges->at(i) = -3 + 0.3*(static_cast<double>(i));
     }
-    Array2D<double> N_i = Array2D<double>::zeroes_double(num_L, num_chi);
-    Array2D<double> tau_N = Array2D<double>::fill(5.0, num_L, num_chi);
+    ArrayND<double,2> * N_i = ArrayND<double,2>::zeroes_double_dyn(array<size_t,2>({num_L, num_chi}));
+    ArrayND<double,2> * tau_N = ArrayND<double,2>::fill_dyn(5.0, array<size_t,2>({num_L, num_chi}));
     Event * event_list = new Event[1]();
     size_t num_events = 0;
     double alt = 550.0; double dh = 50.0; double v = 10.0;
@@ -67,7 +94,8 @@ void atmospheric_test() {
 
 int main() {
     //array_test();
-    //cell_test();
-    atmospheric_test();
+    //array1D_test();
+    cell_test();
+    //atmospheric_test();
     return 0;
 }

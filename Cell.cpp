@@ -8,12 +8,13 @@
 #include <vector>
 #include <cmath>
 #include <math.h>
+#include <iostream>
 
 using namespace std;
 
-Cell::Cell(Satellite * satellites, RocketBody * rockets, Array2D<double> & N_i, size_t num_sat_types,
-           size_t num_rb_types, double * logL_edges, size_t num_L, double * chi_edges, size_t num_chi,
-           Event * event_list, size_t num_events, double alt, double dh, Array2D<double> & tau_N, double v) {
+Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i, size_t num_sat_types,
+           size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
+           Event * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v) {
     /*
     detailed constructor for Cell class
     
@@ -45,96 +46,99 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, Array2D<double> & N_i, 
 
     // setup satellites
     
-    this->S = new vector<Array2D<double> *>();
-    Array2D<double> * S_i = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->S_d = new vector<Array2D<double> *>();
-    Array2D<double> * S_di = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->D = new vector<Array2D<double> *>();
-    Array2D<double> * D_i = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
+    this->S = new vector<Array1D<double> *>();
+    Array1D<double> * S_i = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->S_d = new vector<Array1D<double> *>();
+    Array1D<double> * S_di = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->D = new vector<Array1D<double> *>();
+    Array1D<double> * D_i = Array1D<double>::zeroes_double_dyn(num_sat_types);
     
-    this->m_s = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->sigma_s = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->sigma_s_km = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->lam_s = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->del_t = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->tau_do = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->target_alt = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->up_time = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->alphaS = Array2D<double>::zeroes_double_dyn(num_sat_types, 1); 
-    this->alphaD = Array2D<double>::zeroes_double_dyn(num_sat_types, 1); 
-    this->alphaN = Array2D<double>::zeroes_double_dyn(num_sat_types, 1); 
-    this->alphaR = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->P = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->AM_s = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->tau_s = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->C_s = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->expl_rate_L = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
-    this->expl_rate_D = Array2D<double>::zeroes_double_dyn(num_sat_types, 1);
+    this->m_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->sigma_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->sigma_s_km = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->lam_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->del_t = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->fail_t = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->tau_do = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->target_alt = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->up_time = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->alphaS = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->alphaD = Array1D<double>::zeroes_double_dyn(num_sat_types); 
+    this->alphaN = Array1D<double>::zeroes_double_dyn(num_sat_types); 
+    this->alphaR = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->P = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->AM_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->tau_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->C_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->expl_rate_L = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->expl_rate_D = Array1D<double>::zeroes_double_dyn(num_sat_types);
     
     for (size_t i = 0; i < num_sat_types; i++){
         Satellite sat = satellites[i];
-        S_i->set(sat.S[0], i, 0); S_di->set(sat.S_d[0], i, 0); D_i->set(sat.D[0], i, 0);
-        (this->m_s)->set(sat.m, i, 0); (this->sigma_s)->set(sat.sigma, i, 0); (this->lam_s)->set(sat.lam, i, 0);
-        (this->del_t)->set(sat.del_t, i, 0); (this->tau_do)->set(sat.tau_do, i, 0); 
-        (this->target_alt)->set(sat.target_alt, i, 0); (this->up_time)->set(sat.up_time, i, 0);
-        (this->alphaS)->set(sat.alphaS, i, 0); (this->alphaD)->set(sat.alphaD, i, 0); (this->alphaN)->set(sat.alphaN, i, 0);
-        (this->alphaR)->set(sat.alphaR, i, 0); (this->P)->set(sat.P, i, 0); (this->AM_s)->set(sat.AM, i, 0);
-        (this->tau_s)->set(sat.tau, i, 0); (this->C_s)->set(sat.C, i, 0); (this->expl_rate_L)->set(sat.expl_rate_L, i, 0);
-        (this->expl_rate_D)->set(sat.expl_rate_D, i, 0); (this->sigma_s_km)->set(sat.sigma/1e6, i, 0);
+        S_i->at(i) = sat.S[0]; S_di->at(i) = sat.S_d[0]; D_i->at(i) = sat.D[0]; (this->m_s)->at(i) = sat.m;
+        (this->sigma_s)->at(i) = sat.sigma; (this->lam_s)->at(i) = sat.lam; (this->del_t)->at(i) = sat.del_t;
+        (this->fail_t)->at(i) = sat.fail_t; (this->tau_do)->at(i) = sat.tau_do; (this->target_alt)->at(i) = sat.target_alt;
+        (this->up_time)->at(i) = sat.up_time; (this->alphaS)->at(i) = sat.alphaS; (this->alphaD)->at(i) = sat.alphaD;
+        (this->alphaN)->at(i) = sat.alphaN; (this->alphaR)->at(i) = sat.alphaR; (this->P)->at(i) = sat.P;
+        (this->AM_s)->at(i) = sat.AM; (this->tau_s)->at(i) = sat.tau; (this->C_s)->at(i) = sat.C;
+        (this->expl_rate_L)->at(i) = sat.expl_rate_L; (this->expl_rate_D)->at(i) = sat.expl_rate_D;
+        (this->sigma_s_km)->at(i) = sat.sigma/1e6;
     }
     (this->S)->push_back(S_i); (this->S_d)->push_back(S_di); (this->D)->push_back(D_i);
     
     // setup rocket bodies
-    this->R = new vector<Array2D<double> *>();
-    Array2D<double> * R_i = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
+    this->R = new vector<Array1D<double> *>();
+    Array1D<double> * R_i = Array1D<double>::zeroes_double_dyn(num_rb_types);
     
-    this->m_rb = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
-    this->sigma_rb = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
-    this->sigma_rb_km = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
-    this->lam_rb = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
-    this->AM_rb = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
-    this->tau_rb = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
-    this->C_rb = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
-    this->expl_rate_R = Array2D<double>::zeroes_double_dyn(num_rb_types, 1);
+    this->m_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->sigma_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->sigma_rb_km = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->lam_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->AM_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->tau_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->C_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->expl_rate_R = Array1D<double>::zeroes_double_dyn(num_rb_types);
     
     for (size_t i = 0; i < num_rb_types; i++){
         RocketBody rb = rockets[i];
-        R_i->set(rb.R[0], i, 0);
-        (this->m_rb)->set(rb.m, i, 0); (this->sigma_rb)->set(rb.sigma, i, 0); (this->lam_rb)->set(rb.lam, i, 0);
-        (this->AM_rb)->set(rb.AM, i, 0); (this->tau_rb)->set(rb.tau, i, 0); (this->C_rb)->set(rb.C, i, 0); 
-        (this->expl_rate_R)->set(rb.expl_rate, i, 0); (this->sigma_rb_km)->set(rb.sigma/1e6, i, 0);
+        R_i->at(i) = rb.R[0]; (this->m_rb)->at(i) = rb.m; (this->sigma_rb)->at(i) = rb.sigma;
+        (this->lam_rb)->at(i) = rb.lam; (this->AM_rb)->at(i) = rb.AM; (this->tau_rb)->at(i) = rb.tau;
+        (this->C_rb)->at(i) = rb.C; (this->expl_rate_R)->at(i) = rb.expl_rate;
+        (this->sigma_rb_km)->at(i) = rb.sigma/1e6;
     }
     (this->R)->push_back(R_i);
-    
 
     // setup basic parameters
-    this->N_bins = new vector<Array2D<double> *>(); (this->N_bins)->push_back(new Array2D<double>(N_i));
+    this->N_bins = new vector<ArrayND<double, 2> *>(); (this->N_bins)->push_back(N_i);
     
     this->logL_edges = logL_edges; this->num_L = num_L; this->chi_edges = chi_edges; this->num_chi = num_chi;
-    this->logL_ave = new double[num_L]; this->chi_ave = new double[num_chi];
+    this->logL_ave = Array1D<double>::zeroes_double_dyn(num_L); this->chi_ave = Array1D<double>::zeroes_double_dyn(num_chi);
     for (size_t i = 0; i < num_L; i++) {
-        (this->logL_ave)[i] = ((this->logL_edges)[i] + (this->logL_edges)[i+1])/2;
+        (this->logL_ave)->at(i) = ((this->logL_edges)->at(i) + (this->logL_edges)->at(i+1))/2;
     } for (size_t i = 0; i < num_chi; i++) {
-        (this->chi_ave)[i] = ((this->chi_edges)[i] + (this->chi_edges)[i+1])/2;
+        (this->chi_ave)->at(i) = ((this->chi_edges)->at(i) + (this->chi_edges)->at(i+1))/2;
     }
     this->event_list = event_list; this->num_events = num_events;
     this->alt = alt; this->dh = dh; this->v = v; this->vyr = v*60.0*60.0*24.0*365.25;
     this->v_orbit = sqrt(G*Me/((Re + alt)*1000));
     this->V = 4*M_PI*(Re + this->alt)*(Re + this->alt)*(this->dh);
-    this->tau_N = new Array2D<double>(tau_N);
+    this->tau_N = tau_N;
 
     // setup other matrices
     
-    this->cat_sat_N = new vector<Array2D<bool> *>();
-    this->cat_rb_N = new vector<Array2D<bool> *>();
-    this->ascending = new bool[this->num_sat_types];
-    this->trackable = Array2D<bool>::fill_dyn(false, this->num_L, this->num_chi);
+    this->cat_sat_N = ArrayND<bool,3>::fill_dyn(true, array<size_t,3>({this->num_sat_types, this->num_L, this->num_chi}));
+    this->cat_rb_N = ArrayND<bool,3>::fill_dyn(true, array<size_t,3>({this->num_rb_types, this->num_L, this->num_chi}));
+    this->ascending = Array1D<bool>::fill_dyn(false, this->num_sat_types);
+    this->trackable = ArrayND<bool,2>::fill_dyn(false, array<size_t,2>({this->num_L, this->num_chi}));
     for (size_t i = 0; i < this->num_sat_types; i++) {
-        (this->cat_sat_N)->push_back(Array2D<bool>::fill_dyn(true, this->num_L, this->num_chi));
-        if (this->target_alt->get(i, 0) > (this->alt + (this->dh)/2)) {(this->trackable)->set(true, i, 0);}
+        if (this->target_alt->at(i) > (this->alt + (this->dh)/2)) {(this->ascending)->at(i) = true;}
     }
-    for (size_t i = 0; i < this->num_rb_types; i++) {
-        (this->cat_rb_N)->push_back(Array2D<bool>::fill_dyn(true, this->num_L, this->num_chi));
+    for (size_t i = 0; i < this->num_L; i++) {
+        if (pow(10, logL_ave->at(i)) >= 1.0/10.0) {
+            for (size_t j = 0; j < this->num_chi; j++) {
+                (this->trackable)->at(array<size_t,2>({i,j})) = true;
+            }
+        }
     }
     this->update_cat_N();
 }
@@ -145,24 +149,24 @@ void Cell::update_cat_N() {
     double ave_L;
     double ave_AM;
     for (size_t i = 0; i < this->num_L; i++) {
-        ave_L = pow(10, (this->logL_ave)[i]); // get average length in m
+        ave_L = pow(10, (this->logL_ave)->at(i)); // get average length in m
         for (size_t j = 0; j < this->num_chi; j++) {
-            ave_AM = pow(10, (this->chi_ave)[i]); // get average AM in m^2/kg
+            ave_AM = pow(10, (this->chi_ave)->at(i)); // get average AM in m^2/kg
             for (size_t k = 0; k < this->num_sat_types; k++) {
-                is_cat = is_catastrophic((this->m_s)->get(k, 0), ave_L, ave_AM, this->v); // determine if catestrophic
-                (this->cat_sat_N->at(k))->set(is_cat, k, 0); // set the result
+                is_cat = is_catastrophic((this->m_s)->at(k), ave_L, ave_AM, this->v); // determine if catestrophic
+                (this->cat_sat_N)->at(array<size_t,3>({k,i,j})) = is_cat; // set the result
             } for (size_t k = 0; k < this->num_rb_types; k++) { // do the same thing for rockets
-                is_cat = is_catastrophic((this->m_rb)->get(k, 0), ave_L, ave_AM, this->v); // determine if catestrophic
-                (this->cat_rb_N->at(k))->set(is_cat, k, 0); // set the result
+                is_cat = is_catastrophic((this->m_rb)->at(k), ave_L, ave_AM, this->v); // determine if catestrophic
+                (this->cat_rb_N)->at(array<size_t,3>({k,i,j})) = is_cat; // set the result
             }
         }
     }
 }
 
-void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt, Array2D<double> &dDdt, Array2D<double> &dRdt, 
-                     Array2D<double> &S_out, Array2D<double> &S_dout, Array2D<double> &D_out, Array2D<double> &R_out,
-                     Array2D<double> &N_out, Array2D<double> &D_dt, Array2D<double> &DR_dt, Array2D<double> &R_dt, 
-                     Array2D<double> **CS_dt, Array2D<double> **CR_dt, Array2D<double> &expl_S, Array2D<double> &expl_R) {
+void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt, Array1D<double> &dRdt, 
+                     Array1D<double> &S_out, Array1D<double> &S_dout, Array1D<double> &D_out, Array1D<double> &R_out,
+                     ArrayND<double,2> &N_out, ArrayND<double,2> &D_dt, ArrayND<double,2> &DR_dt, ArrayND<double,2> &R_dt, 
+                     ArrayND<double,3> &CS_dt, ArrayND<double,3> &CR_dt, Array1D<double> &expl_S, Array1D<double> &expl_R) {
     /*
     calculates the rate of collisions and decays from each debris bin, the rate
     of decaying/de-orbiting satellites, the rate of launches/deorbit starts of satallites, 
@@ -197,7 +201,7 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
     */
 
     // get current N value
-    Array2D<double> N = *(this->N_bins->back());
+    ArrayND<double,2> N = *(this->N_bins->back());
 
     // setup some temp parameters
     double sigma_loc_km0; double R1; double sigma_loc_km1; double sigma_comb; double n;
@@ -206,14 +210,14 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
     for (size_t i = 0; i < this->num_sat_types; i++) {
 
         // get current parameters
-        double S0 = this->S->at(time)->get(i,0);
-        double SD0 = this->S_d->at(time)->get(i,0);
-        double D0 = this->D->at(time)->get(i,0);
-        sigma_loc_km0 = this->sigma_s_km->get(i,0);
-        double alphaS0 = this->alphaS->get(i, 0);
-        double alphaD0 = this->alphaD->get(i, 0);
-        double alphaN0 = this->alphaN->get(i, 0);
-        double alphaR0 = this->alphaR->get(i, 0);
+        double S0 = this->S->at(time)->at(i);
+        double SD0 = this->S_d->at(time)->at(i);
+        double D0 = this->D->at(time)->at(i);
+        sigma_loc_km0 = this->sigma_s_km->at(i);
+        double alphaS0 = this->alphaS->at(i);
+        double alphaD0 = this->alphaD->at(i);
+        double alphaN0 = this->alphaN->at(i);
+        double alphaR0 = this->alphaR->at(i);
 
         // setup temp parameters
         double dSdt_loc; double dS_ddt_loc; double dDdt_loc;
@@ -221,13 +225,12 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
         double dSRdt_loc; double dS_dS_ddt_loc; double dS_dDdt_loc;
         double dS_dRdt_loc; double dDDdt_loc; double dDRdt_loc;
         double S1; double SD1; double D1; double alphaS1;
-        Array2D<double> * CS_dt_loc = CS_dt[i]; // pointer to array for this satellite type
 
         // handle satellite-debris collisions
         for (size_t j = 0; j < this->num_L; j++) {
             for (size_t k = 0; k < this->num_chi; k++) {
-                n = N.get(j,k)/(this->V); // calculate debris density
-                if (this->trackable->get(j,k)) { // if avoidance is possible
+                n = N.at(array<size_t,2>({j,k}))/(this->V); // calculate debris density
+                if (this->trackable->at(array<size_t,2>({j,k}))) { // if avoidance is possible
                     dSdt_loc = alphaN0*n*sigma_loc_km0*(this->vyr)*S0;
                     dS_ddt_loc = alphaN0*n*sigma_loc_km0*(this->vyr)*SD0;
                 } else { // if avoidance is impossible
@@ -236,21 +239,24 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
                 }
                 dDdt_loc = n*sigma_loc_km0*(this->vyr)*D0; // never avoids
                 // update return values
-                dSdt.set(dSdt.get(i,0) - dSdt_loc, i, 0);
-                dS_ddt.set(dS_ddt.get(i,0) - dS_ddt_loc, i, 0);
-                dDdt.set(dDdt.get(i,0) - dDdt_loc, i, 0);
-                CS_dt_loc->set(CS_dt_loc->get(j,k) - dSdt_loc - dS_ddt_loc - dDdt_loc, j, k);
+                dSdt.at(i) -= dSdt_loc; dS_ddt.at(i) -= dS_ddt_loc;
+                if ((this->cat_sat_N)->at(array<size_t,3>({i,j,k})) == false) { // collisions that create derelicts
+                    dDdt.at(i) += dSdt_loc + dS_ddt_loc;
+                } else { // collisions that destroy derelicts
+                    dDdt.at(i) -= dDdt_loc;
+                }
+                CS_dt.at(array<size_t,3>({i,j,k})) += dSdt_loc + dS_ddt_loc + dDdt_loc;
             }
         }
 
         // handle satellite-satellite collisions
         for (size_t j = 0; j < this->num_sat_types; j++) {
             // get local parameters for this satellite type
-            S1 = this->S->at(time)->get(j, 0);
-            SD1 = this->S_d->at(time)->get(j,0);
-            D1 = this->D->at(time)->get(j,0);
-            sigma_loc_km1 = this->sigma_s_km->get(j,0);
-            alphaS1 = this->alphaS->get(j, 0);
+            S1 = this->S->at(time)->at(j);
+            SD1 = this->S_d->at(time)->at(j);
+            D1 = this->D->at(time)->at(j);
+            sigma_loc_km1 = this->sigma_s_km->at(j);
+            alphaS1 = this->alphaS->at(j);
             
             // calculate combined cross-section
             sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2*sqrt(sigma_loc_km0*sigma_loc_km1);
@@ -265,27 +271,27 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
 
             // update return values
             if (i <= j) { // avoid double counting
-                D_dt.set(D_dt.get(i,j) + dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc, i, j);
+                D_dt.at(array<size_t,2>({i,j})) +=  dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc;
             }
-            D_dt.set(D_dt.get(i,j) + dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc, i, j); // these aren't double counted
+            D_dt.at(array<size_t,2>({i,j})) += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc; // these aren't double counted
             if (i == j) { // destroys two of the same type in one go
-                dSdt.set(dSdt.get(i,0) - 2*dSSdt_loc - dSS_ddt_loc - dSDdt_loc, i, 0);
-                dS_ddt.set(dS_ddt.get(i,0) - dSS_ddt_loc - 2*dS_dS_ddt_loc - dS_dDdt_loc, i, 0);
-                dDdt.set(dDdt.get(i,0) - dSDdt_loc - dS_dDdt_loc - 2*dDDdt_loc, i, 0);
+                dSdt.at(i) -= 2*dSSdt_loc + dSS_ddt_loc + dSDdt_loc;
+                dS_ddt.at(i) -= dSS_ddt_loc + 2*dS_dS_ddt_loc + dS_dDdt_loc;
+                dDdt.at(i) -= dSDdt_loc + dS_dDdt_loc + 2*dDDdt_loc;
             } else { // doesnt, and have to treat first and second satellite types seperately sometimes
-                dSdt.set(dSdt.get(i,0) - dSSdt_loc - dSS_ddt_loc - dSDdt_loc, i, 0);
-                dS_ddt.set(dS_ddt.get(i,0) - dS_dS_ddt_loc - dS_dDdt_loc, i, 0);
-                dDdt.set(dDdt.get(i,0) - dDDdt_loc, i, 0);
-                dS_ddt.set(dS_ddt.get(j, 0) - dSS_ddt_loc, j, 0);
-                dDdt.set(dDdt.get(j,0) - dSDdt_loc - dS_dDdt_loc, j, 0);
+                dSdt.at(i) -= dSSdt_loc + dSS_ddt_loc + dSDdt_loc;
+                dS_ddt.at(i) -= dS_dS_ddt_loc + dS_dDdt_loc;
+                dDdt.at(i) -= dDDdt_loc;
+                dS_ddt.at(j) -= dSS_ddt_loc;
+                dDdt.at(j) -= dSDdt_loc + dS_dDdt_loc;
             }
         }
 
         // handle satellite-rocket collisions
         for (size_t j = 0; j < this->num_rb_types; j++) {
             // get local parameters for this rocket type
-            R1 = this->R->at(time)->get(j, 0);
-            sigma_loc_km1 = this->sigma_rb_km->get(j,0);
+            R1 = this->R->at(time)->at(j);
+            sigma_loc_km1 = this->sigma_rb_km->at(j);
             
             // calculate combined cross-section
             sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2*sqrt(sigma_loc_km0*sigma_loc_km1);
@@ -296,58 +302,64 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
             dDRdt_loc = sigma_comb*(this->vyr)*D0*R1/(this->V);
 
             // update return values
-            DR_dt.set(DR_dt.get(i,j) + dSRdt_loc + dS_dRdt_loc + dDRdt_loc, i, j); // these aren't double counted
-            dSdt.set(dSdt.get(i,0) - dSRdt_loc, i, 0);
-            dS_ddt.set(dS_ddt.get(i,0) - dS_dRdt_loc, i, 0);
-            dDdt.set(dDdt.get(i,0) - dDRdt_loc, i, 0);
-            dRdt.set(dRdt.get(j,0) - dSRdt_loc - dS_dRdt_loc - dDRdt_loc, j, 0);
+            DR_dt.at(array<size_t,2>({i,j})) += dSRdt_loc + dS_dRdt_loc + dDRdt_loc; // these aren't double counted
+            dSdt.at(i) -= dSRdt_loc;
+            dS_ddt.at(i) -= dS_dRdt_loc;
+            dDdt.at(i) -= dDRdt_loc;
+            dRdt.at(j) -= dSRdt_loc + dS_dRdt_loc + dDRdt_loc;
         }
 
         // handle decays/explosions
-        double expl_S = (this->expl_rate_L->get(i, 0))*S0/100.0; // calculate explosion rates
-        double expl_S_d = (this->expl_rate_L->get(i, 0))*SD0/100.0;
-        double expl_D = (this->expl_rate_D->get(i, 0))*D0/100.0;
-        double decay_S = D0/(this->tau_s->get(i, 0)); // satellites ascending/descending, switching to de-orbit
-        double kill_S = S0/(this->del_t->get(i, 0));
-        double deorbit_S = SD0/(this->tau_do->get(i, 0));
-        double ascend_S = S0/(this->up_time->get(i, 0));
+        double expl_S = (this->expl_rate_L->at(i))*S0/100.0; // calculate explosion rates
+        double expl_S_d = (this->expl_rate_L->at(i))*SD0/100.0;
+        double expl_D = (this->expl_rate_D->at(i))*D0/100.0;
+        double decay_S = D0/(this->tau_s->at(i)); // satellites ascending/descending, switching to de-orbit
+        double kill_S = 0.0;
+        if ((this->ascending)->at(i) == true) { // failure on ascending
+            kill_S = S0/(this->fail_t->at(i));
+        } else { // end of lifetime
+            kill_S = S0/(this->del_t->at(i));
+        }
+        double deorbit_S = SD0/(this->tau_do->at(i));
+        double ascend_S = S0/(this->up_time->at(i));
 
         // update return values
-        double P_loc = this->P->get(i,0);
-        dSdt.set(dSdt.get(i,0) - expl_S - decay_S - kill_S - ascend_S, i, 0);
-        dS_ddt.set(dS_ddt.get(i,0) + P_loc*kill_S - deorbit_S, i, 0);
-        dDdt.set(dDdt.get(i,0) + kill_S*(1-P_loc) - decay_S, i, 0);
-        S_out.set(S_out.get(i,0) + ascend_S, i, 0);
-        S_dout.set(S_dout.get(i,0) + deorbit_S, i, 0);
-        D_out.set(D_out.get(i,0) + decay_S, i, 0);
+        double P_loc = this->P->at(i);
+        dSdt.at(i) -= expl_S + decay_S + kill_S + ascend_S;
+        dS_ddt.at(i) += P_loc*kill_S - deorbit_S;
+        dDdt.at(i) += kill_S*(1-P_loc) - decay_S;
+        S_out.at(i) += ascend_S;
+        S_dout.at(i) += deorbit_S;
+        D_out.at(i) += decay_S;
     }
 
     // handle rocket-body only events
     for (size_t i = 0; i < this->num_rb_types; i++) {
         // setup temp local parameter
         double dRRdt_loc; double dRdt_loc;
-        Array2D<double> * CR_dt_loc = CR_dt[i]; // pointer to array for this satellite type
 
         // get relevant local values
-        double R0 = this->R->at(i)->get(time,0);
-        sigma_loc_km0 = this->sigma_rb_km->get(i,0);
+        double R0 = this->R->at(i)->at(time);
+        sigma_loc_km0 = this->sigma_rb_km->at(i);
 
         // handle rocket-debris collisions
         for (size_t j = 0; j < this->num_L; j++) {
             for (size_t k = 0; k < this->num_chi; k++) {
-                n = N.get(j,k)/(this->V); // calculate debris density
+                n = N.at(array<size_t,2>({j,k}))/(this->V); // calculate debris density
                 dRdt_loc = n*sigma_loc_km0*(this->vyr)*R0; // never avoids
                 // update return values
-                dRdt.set(dRdt.get(i,0) - dRdt_loc, i, 0);
-                CR_dt_loc->set(CR_dt_loc->get(i,j) + dRdt_loc, i, j);
+                if ((this->cat_rb_N)->at(array<size_t,3>({i,j,k})) == true) { // collisions that destroy rockets
+                    dRdt.at(i) -= dRdt_loc;
+                }
+                CR_dt.at(array<size_t,3>({i,j,k})) += dRdt_loc;
             }
         }
 
         // handle rocket-rocket collisions
         for (size_t j = 0; j < this->num_rb_types; j++) {
             // get local parameters for this rocket type
-            R1 = this->R->at(i)->get(time,0);
-            sigma_loc_km1 = this->sigma_rb_km->get(i,0);
+            R1 = this->R->at(i)->at(time);
+            sigma_loc_km1 = this->sigma_rb_km->at(i);
             
             // calculate combined cross-section
             sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2*sqrt(sigma_loc_km0*sigma_loc_km1);
@@ -357,28 +369,28 @@ void Cell::dxdt_cell(size_t time, Array2D<double> &dSdt, Array2D<double> &dS_ddt
 
             // update return values
             if (i <= j) { // avoid double counting
-                R_dt.set(R_dt.get(i,j) + dRRdt_loc, i, j);
+                R_dt.at(array<size_t,2>({i,j})) += dRRdt_loc;
             }
             if (i == j) { // destroys two of the same type in one go
-                dRdt.set(dRdt.get(i,0) - 2*dRRdt_loc, i, 0);
+                dRdt.at(i) -= 2*dRRdt_loc;
             } else {
-                dRdt.set(dRdt.get(i,0) - dRRdt_loc, i, 0);
+                dRdt.at(i) -= dRRdt_loc;
             }
         }
 
         // handle decays/explosions
-        double expl_R = (this->expl_rate_R->get(i, 0))*R0/100.0; // calculate explosion rates
-        double decay_R = R0/(this->tau_rb->get(i, 0)); // calculate decay rates
+        double expl_R = (this->expl_rate_R->at(i))*R0/100.0; // calculate explosion rates
+        double decay_R = R0/(this->tau_rb->at(i)); // calculate decay rates
 
         // update return values
-        dRdt.set(dRdt.get(i,0) - expl_R - decay_R, i, 0);
-        R_out.set(R_out.get(i,0) + decay_R, i, 0);
+        dRdt.at(i) -= expl_R + decay_R;
+        R_out.at(i) += decay_R;
     }
 
     // handle debris decays
     for (size_t i = 0; i < this->num_L; i++) {
         for (size_t j = 0; j < this->num_chi; j++) {
-            N_out.set(N.get(i,j)/(this->tau_N->get(i,j)), i, j);
+            N_out.at(array<size_t,2>({i,j})) = N.at(array<size_t,2>({i,j}))/(this->tau_N->at(array<size_t,2>({i,j})));
         }
     }
 
@@ -389,9 +401,9 @@ Cell::~Cell() {
     // basic class destructor
     // Note : the Cell is not assumed to own the logL_edges and chi_edges arrays, and hence
     //        will not free them
-    delete this->trackable; delete [] this->ascending; delete this->cat_rb_N;
+    delete this->trackable; delete this->ascending; delete this->cat_rb_N;
     delete this->cat_sat_N; delete this->tau_N; delete [] this->event_list;
-    delete [] this->logL_ave; delete [] this->chi_ave; delete this->sigma_s_km;
+    delete this->logL_ave; delete this->chi_ave; delete this->sigma_s_km;
     delete this->N_bins; delete this->R; delete this->expl_rate_R;
     delete this->C_rb; delete this->tau_rb; delete this->AM_rb; delete this->lam_rb;
     delete this->sigma_rb; delete this->m_rb; delete this->D; delete this->S_d;
@@ -399,5 +411,5 @@ Cell::~Cell() {
     delete this->C_s; delete this->tau_s; delete this->AM_s; delete this->P;
     delete this->alphaR; delete this->alphaN; delete this->alphaD; delete this->alphaS;
     delete this->up_time; delete this->target_alt; delete this->tau_do; delete this->del_t;
-    delete this->lam_s; delete this->sigma_s; delete this->m_s; delete this->sigma_rb_km;
+    delete this->fail_t; delete this->lam_s; delete this->sigma_s; delete this->m_s; delete this->sigma_rb_km;
 }
