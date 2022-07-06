@@ -79,12 +79,14 @@ void cell_test() {
     }
     ArrayND<double,2> * N_i = ArrayND<double,2>::zeroes_double_dyn(array<size_t,2>({num_L, num_chi}));
     ArrayND<double,2> * tau_N = ArrayND<double,2>::fill_dyn(5.0, array<size_t,2>({num_L, num_chi}));
-    Event * event_list = new Event[1]();
+    vector<Event *> * event_list = new vector<Event *>();
     size_t num_events = 0;
     double alt = 550.0; double dh = 50.0; double v = 10.0;
+    vector<double> * C_l = new vector<double>({0});
+    vector<double> * C_nl = new vector<double>({0});
     cout << "Here" << endl;
     Cell test_cell = Cell(&sat, &rb, N_i, num_sat_types, num_rb_types, logL_edges, num_L, chi_edges,
-                          num_chi, event_list, num_events, alt, dh, tau_N, v);
+                          num_chi, event_list, num_events, alt, dh, tau_N, v, C_l, C_nl);
     cout << "Cell made!" << endl;
 }
 

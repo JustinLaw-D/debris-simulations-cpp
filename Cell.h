@@ -48,7 +48,7 @@ class Cell
         Array1D<double> * chi_edges; // edges of the chi bins
         Array1D<double> * chi_ave; // middle of each bin
         size_t num_chi; // number of chi bins
-        Event * event_list; // list of events that can occur in the cell
+        vector<Event *> * event_list; // list of events that can occur in the cell
         size_t num_events; // number of events in the event_list
         double alt; // altitude of the shell centre (km)
         double dh; // width of the shell (km)
@@ -61,17 +61,21 @@ class Cell
         ArrayND<bool, 3> * cat_rb_N; // array of which bins have catestrophic for rocket types
         Array1D<bool> * ascending; // whether or not each satellite type is ascending
         ArrayND<bool, 2> * trackable; // which bins are trackable
+        vector<double> * C_l; // total number of catestrophic collisions in each time step
+        vector<double> * C_nl; // total number of non-catestrophic collisions in each time step
 
     public:
         // full constructor
         Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i, size_t num_sat_types,
              size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
-             Event * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v);
+             vector<Event *> * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v,
+             vector<double> * C_l, vector<double> * C_nl);
         // calculating local rates of change
-        void dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt, Array1D<double> &dRdt, 
-                       Array1D<double> &S_out, Array1D<double> &S_dout, Array1D<double> &D_out, Array1D<double> &R_out,
-                       ArrayND<double,2> &N_out, ArrayND<double,2> &D_dt, ArrayND<double,2> &DR_dt, ArrayND<double,2> &R_dt, 
-                       ArrayND<double,3> &CS_dt, ArrayND<double,3> &CR_dt, Array1D<double> &expl_S, Array1D<double> &expl_R);
+        void dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt, Array1D<double> &dRdt,
+                       double &dC_ldt, double &dC_nldt, Array1D<double> &S_out, Array1D<double> &S_dout, Array1D<double> &D_out, 
+                       Array1D<double> &R_out, ArrayND<double,2> &N_out, ArrayND<double,2> &D_dt, ArrayND<double,2> &DR_dt, 
+                       ArrayND<double,2> &R_dt, ArrayND<double,3> &CS_dt, ArrayND<double,3> &CR_dt, Array1D<double> &expl_S, 
+                       Array1D<double> &expl_R);
         void update_cat_N(); // updates catestrophic debris tables
         ~Cell(); // destructor
 };

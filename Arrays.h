@@ -425,10 +425,10 @@ T & ArrayND<T, N>::at(const array<size_t,N> &loc) {
     val : reference to the array at that location, performs no size check
     */
     size_t real_loc = 0;
-    size_t skip_mul = 1;
+    size_t skip_mul = this->tot_size;
     for (size_t i = 0; i < N; i++) {
+        skip_mul /= (this->dim)[i];
         real_loc += loc[i]*skip_mul;
-        skip_mul *= (this->dim)[i];
     }
     return (this->arr)[real_loc];
 }
@@ -515,10 +515,11 @@ void ArrayND<T, N>::print() {
         cout << "Zero-Sized Array" << endl;
     } else {
         array<size_t, N> partial_loc = array<size_t, N>(this->dim);
+        size_t curr_skip_mul = (this->tot_size)/((this->dim)[0]);
         cout << "[";
         for (size_t i = 0; i < (this->dim)[0]; i++) {
             partial_loc[0] = i;
-            this->print_dim(partial_loc, 1, i, (this->dim)[0]);
+            this->print_dim(partial_loc, 1, i*curr_skip_mul, curr_skip_mul);
         }
         cout << "]" << endl;
     }
@@ -545,9 +546,10 @@ void ArrayND<T, N>::print_dim(array<size_t, N> partial_loc, size_t num_set, size
         }
     } else { // continue the recursion
         cout << "[";
+        curr_skip_mul /= (this->dim)[num_set];
         for (size_t i = 0; i < (this->dim)[num_set]; i++) {
             partial_loc[num_set] = i;
-            this->print_dim(partial_loc, num_set + 1, curr_true_loc + i*curr_skip_mul, curr_skip_mul*(this->dim)[num_set]);
+            this->print_dim(partial_loc, num_set + 1, curr_true_loc + i*curr_skip_mul, curr_skip_mul);
         }
         if (partial_loc[num_set-1] == (this->dim[num_set-1]) - 1) {cout << "]";} // check if it's the end of the row
         else {cout << "]" << endl;}

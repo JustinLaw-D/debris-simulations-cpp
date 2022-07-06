@@ -14,7 +14,8 @@ using namespace std;
 
 Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i, size_t num_sat_types,
            size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
-           Event * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v) {
+           vector<Event *> * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v,
+           vector<double> * C_l, vector<double> * C_nl) {
     /*
     detailed constructor for Cell class
     
@@ -34,11 +35,13 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
     dh : width of the shell (km)
     tau_N : array of atmospheric drag lifetimes for debris (yr)
     v : relative collision speed (km/s)
+    C_l : total number of catestrophic collisions in each time step
+    C_nl : total number of non-catestrophic collisions in each time step
 
     Output(s):
     Cell instance
 
-    Note(s) : event_list must be a dynamically allocated array
+    Note(s): all pointers must be to dynamically allocated objects.
     */
     
     this->num_sat_types = num_sat_types;
@@ -122,7 +125,7 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
     this->alt = alt; this->dh = dh; this->v = v; this->vyr = v*60.0*60.0*24.0*365.25;
     this->v_orbit = sqrt(G*Me/((Re + alt)*1000));
     this->V = 4*M_PI*(Re + this->alt)*(Re + this->alt)*(this->dh);
-    this->tau_N = tau_N;
+    this->tau_N = tau_N; this->C_l = C_l; this->C_nl = C_nl;
 
     // setup other matrices
     
@@ -164,9 +167,9 @@ void Cell::update_cat_N() {
 }
 
 void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt, Array1D<double> &dRdt, 
-                     Array1D<double> &S_out, Array1D<double> &S_dout, Array1D<double> &D_out, Array1D<double> &R_out,
-                     ArrayND<double,2> &N_out, ArrayND<double,2> &D_dt, ArrayND<double,2> &DR_dt, ArrayND<double,2> &R_dt, 
-                     ArrayND<double,3> &CS_dt, ArrayND<double,3> &CR_dt, Array1D<double> &expl_S, Array1D<double> &expl_R) {
+                     double &dC_ldt, double &dC_nldt, Array1D<double> &S_out, Array1D<double> &S_dout, Array1D<double> &D_out, 
+                     Array1D<double> &R_out, ArrayND<double,2> &N_out, ArrayND<double,2> &D_dt, ArrayND<double,2> &DR_dt, 
+                     ArrayND<double,2> &R_dt, ArrayND<double,3> &CS_dt, ArrayND<double,3> &CR_dt, Array1D<double> &expl_S, Array1D<double> &expl_R) {
     /*
     calculates the rate of collisions and decays from each debris bin, the rate
     of decaying/de-orbiting satellites, the rate of launches/deorbit starts of satallites, 
@@ -184,6 +187,8 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
            (not including decaying derelicts) (yr^(-1))
     dRdt : array of rate of change of number of rocket bodies in the cell of each type (yr^(-1))
            (not including decaying rocket bodies)
+    dC_ldt : rate of change of total number of catestrophic collisions (1/yr)
+    dC_nldt : rate of change of total number of non-catestrophic collisions (1/yr)
     S_out : array of rate of satellites ascending from the cell of each type (yr^(-1))
     S_dout : array of rate of satellites de-orbiting from the cell of each type (yr^(-1))
     D_out : array of rate of satellites decaying from the cell of each type (yr^(-1))
@@ -246,6 +251,11 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
                     dDdt.at(i) -= dDdt_loc;
                 }
                 CS_dt.at(array<size_t,3>({i,j,k})) += dSdt_loc + dS_ddt_loc + dDdt_loc;
+                if (this->cat_sat_N->at(array<size_t,3>({i,j,k})) == true) { // update collision count
+                    dC_ldt += dSdt_loc + dS_ddt_loc + dDdt_loc;
+                } else {
+                    dC_nldt += dSdt_loc + dS_ddt_loc + dDdt_loc;
+                }
             }
         }
 
@@ -271,9 +281,11 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
             // update return values
             if (i <= j) { // avoid double counting
-                D_dt.at(array<size_t,2>({i,j})) +=  dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc;
+                D_dt.at(array<size_t,2>({i,j})) += dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc;
+                dC_ldt += dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc;
             }
             D_dt.at(array<size_t,2>({i,j})) += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc; // these aren't double counted
+            dC_ldt += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc;
             if (i == j) { // destroys two of the same type in one go
                 dSdt.at(i) -= 2*dSSdt_loc + dSS_ddt_loc + dSDdt_loc;
                 dS_ddt.at(i) -= dSS_ddt_loc + 2*dS_dS_ddt_loc + dS_dDdt_loc;
@@ -303,6 +315,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
             // update return values
             DR_dt.at(array<size_t,2>({i,j})) += dSRdt_loc + dS_dRdt_loc + dDRdt_loc; // these aren't double counted
+            dC_ldt += dSRdt_loc + dS_dRdt_loc + dDRdt_loc;
             dSdt.at(i) -= dSRdt_loc;
             dS_ddt.at(i) -= dS_dRdt_loc;
             dDdt.at(i) -= dDRdt_loc;
@@ -352,6 +365,11 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
                     dRdt.at(i) -= dRdt_loc;
                 }
                 CR_dt.at(array<size_t,3>({i,j,k})) += dRdt_loc;
+                if (this->cat_rb_N->at(array<size_t,3>({i,j,k})) == true) { // update collision count
+                    dC_ldt += dRdt_loc;
+                } else {
+                    dC_nldt += dRdt_loc;
+                }
             }
         }
 
@@ -370,6 +388,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             // update return values
             if (i <= j) { // avoid double counting
                 R_dt.at(array<size_t,2>({i,j})) += dRRdt_loc;
+                dC_ldt += dRRdt_loc;
             }
             if (i == j) { // destroys two of the same type in one go
                 dRdt.at(i) -= 2*dRRdt_loc;
@@ -402,7 +421,7 @@ Cell::~Cell() {
     // Note : the Cell is not assumed to own the logL_edges and chi_edges arrays, and hence
     //        will not free them
     delete this->trackable; delete this->ascending; delete this->cat_rb_N;
-    delete this->cat_sat_N; delete this->tau_N; delete [] this->event_list;
+    delete this->cat_sat_N; delete this->tau_N; delete this->event_list;
     delete this->logL_ave; delete this->chi_ave; delete this->sigma_s_km;
     delete this->N_bins; delete this->R; delete this->expl_rate_R;
     delete this->C_rb; delete this->tau_rb; delete this->AM_rb; delete this->lam_rb;
@@ -412,4 +431,5 @@ Cell::~Cell() {
     delete this->alphaR; delete this->alphaN; delete this->alphaD; delete this->alphaS;
     delete this->up_time; delete this->target_alt; delete this->tau_do; delete this->del_t;
     delete this->fail_t; delete this->lam_s; delete this->sigma_s; delete this->m_s; delete this->sigma_rb_km;
+    delete this->C_l; delete this->C_nl;
 }
