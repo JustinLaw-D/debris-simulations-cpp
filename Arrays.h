@@ -1,9 +1,12 @@
-// 1 and N-d, constant size arrays
+// 1 and N-d, constant size arrays, along with method for loading vectors
 
 #include <cstring>
 #include <cmath>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <array>
+#include <vector>
 #pragma once
 
 using namespace std;
@@ -24,114 +27,8 @@ class ArrayND
         ArrayND(); // basic constructor, creates size zero array
         ArrayND(const array<size_t, N> &dim); // another basic constructor 
         ArrayND(const ArrayND &arr); // copy constructor
-
-        static ArrayND zeroes_int(const array<size_t, N> &dim) {
-            /*
-            initializes an array of all zeros, of type int
-
-            Input(s):
-            dim : list of dimentions of the array
-
-            Output(s):
-            arr_out : ArrayND object full of zeros
-            */
-            if (N == 0) { // in this case, return zero array
-                return ArrayND<int, N>();
-            } else {
-                size_t tot_size = 1; // calculate total number of elements in the array
-                for (size_t i = 0; i < N; i++) {
-                    tot_size *= dim[i];
-                }
-                int * arr = new int[tot_size]; array<size_t,N> dim_loc = array<size_t,N>(dim);
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0;
-                }
-                return ArrayND<int, N>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static ArrayND * zeroes_int_dyn(const array<size_t, N> &dim) {
-            /*
-            initializes a dynamically allocated array of all zeros, of type int
-
-            Input(s):
-            dim : list of dimentions of the array
-
-            Output(s):
-            arr_out : ArrayND object full of zeros
-            */
-            if (N == 0) { // in this case, return zero array
-                return new ArrayND<int, N>();
-            } else {
-                size_t tot_size = 1; // calculate total number of elements in the array
-                for (size_t i = 0; i < N; i++) {
-                    tot_size *= dim[i];
-                }
-                int * arr = new int[tot_size]; array<size_t,N> dim_loc = array<size_t,N>(dim);
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0;
-                }
-                return new ArrayND<int, N>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static ArrayND zeroes_double(const array<size_t, N> &dim) {
-            /*
-            initializes a dynamically allocated array of all zeros, of type int
-
-            Input(s):
-            dim : list of dimentions of the array
-
-            Output(s):
-            arr_out : ArrayND object full of zeros
-            */
-            if (N == 0) { // in this case, return zero array
-                return ArrayND<double, N>();
-            } else {
-                size_t tot_size = 1; // calculate total number of elements in the array
-                for (size_t i = 0; i < N; i++) {
-                    tot_size *= dim[i];
-                }
-                double * arr = new double[tot_size]; array<size_t,N> dim_loc = array<size_t,N>(dim);
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0.0;
-                }
-                return ArrayND<double, N>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static ArrayND * zeroes_double_dyn(const array<size_t, N> &dim) {
-            /*
-            initializes a dynamically allocated array of all zeros, of type double
-
-            Input(s):
-            dim : list of dimentions of the array
-            num_dim : number of dimentions of the array
-
-            Output(s):
-            arr_out : ArrayND object full of zeros
-            */
-            if (N == 0) { // in this case, return zero array
-                return new ArrayND<double, N>();
-            } else {
-                size_t tot_size = 1; // calculate total number of elements in the array
-                for (size_t i = 0; i < N; i++) {
-                    tot_size *= dim[i];
-                }
-                double * arr = new double[tot_size]; array<size_t,N> dim_loc = array<size_t,N>(dim);
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0.0;
-                }
-                return new ArrayND<double, N>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static ArrayND fill(const T val, const array<size_t, N> &dim); // creates array with copies of given value
-        static ArrayND * fill_dyn(const T val, const array<size_t, N> &dim); // same thing, but returns a pointer
+        ArrayND(const T val, const array<size_t, N> &dim); // creates array with copies of given value
+        ArrayND(const string &filepath); // creates array by loading from .npy file
         inline bool is_zero(); // check if this is a size-zero array
         inline array<size_t,N> get_dim() const; // gets dimensions
         inline size_t get_tot_size() const; // get total number of elements
@@ -158,101 +55,8 @@ class Array1D : public ArrayND<T,1> {
         Array1D(); // basic constructor, creates size zero array
         Array1D(const size_t len); // another basic constructor 
         Array1D(const Array1D &arr); // copy constructor
-
-        static Array1D zeroes_int(const size_t len) {
-            /*
-            initializes an array of all zeros, of type int
-
-            Input(s):
-            len : length of the array
-
-            Output(s):
-            arr_out : Array1D object full of zeros
-            */
-            if (len == 0) { // in this case, return zero array
-                return Array1D<int>();
-            } else {
-                size_t tot_size = len; // calculate total number of elements in the array
-                int * arr = new int[tot_size]; array<size_t,1> dim_loc = array<size_t,1>({len});
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0;
-                }
-                return Array1D<int>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static Array1D * zeroes_int_dyn(const size_t len) {
-            /*
-            initializes a dynamically allocated array of all zeros, of type int
-
-            Input(s):
-            len : length of the array
-
-            Output(s):
-            arr_out : Array1D object full of zeros
-            */
-            if (len == 0) { // in this case, return zero array
-                return new Array1D<int>();
-            } else {
-                size_t tot_size = len; // calculate total number of elements in the array
-                int * arr = new int[tot_size]; array<size_t,1> dim_loc = array<size_t,1>({len});
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0;
-                }
-                return new Array1D<int>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static Array1D zeroes_double(const size_t len) {
-            /*
-            initializes an array of all zeros, of type double
-
-            Input(s):
-            len : length of the array
-
-            Output(s):
-            arr_out : Array1D object full of zeros
-            */
-            if (len == 0) { // in this case, return zero array
-                return Array1D<double>();
-            } else {
-                size_t tot_size = len; // calculate total number of elements in the array
-                double * arr = new double[tot_size]; array<size_t,1> dim_loc = array<size_t,1>({len});
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0.0;
-                }
-                return Array1D<double>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static Array1D * zeroes_double_dyn(const size_t len) {
-            /*
-            initializes a dyanamically allocated array of all zeros, of type double
-
-            Input(s):
-            len : length of the array
-
-            Output(s):
-            arr_out : Array1D object full of zeros
-            */
-            if (len == 0) { // in this case, return zero array
-                return new Array1D<double>();
-            } else {
-                size_t tot_size = len; // calculate total number of elements in the array
-                double * arr = new double[tot_size]; array<size_t,1> dim_loc = array<size_t,1>({len});
-                // initialize to zeros
-                for (size_t i = 0; i < tot_size; i++) {
-                    arr[i] = 0.0;
-                }
-                return new Array1D<double>(arr, dim_loc, tot_size);
-            }
-        }
-
-        static Array1D fill(const T val, const size_t len); // creates array with copies of given value
-        static Array1D * fill_dyn(const T val, const size_t len); // same thing, but returns a pointer
+        Array1D(const T val, const size_t len); // creates array with copies of given value
+        Array1D(const string &filepath); // load from .npy file
         inline T & at(const size_t loc); // get reference to a specific element
 };
 
@@ -326,7 +130,61 @@ ArrayND<T, N>::ArrayND(const ArrayND<T, N> &arr) {
 }
 
 template <typename T, size_t N>
-ArrayND<T,N> ArrayND<T,N>::fill(const T val, const array<size_t, N> &dim) {
+ArrayND<T,N>::ArrayND(const string &filepath) {
+    /*
+    loads an N-d array from a saved .npy type file
+
+    Input(s):
+    filepath : string containing relative or absolute path to saved data
+
+    Outpus(s): ArrayND instance
+    */
+
+    ifstream data_file; data_file.open(filepath, ios::in | ios::binary);
+    if (data_file.is_open()) {
+        char waste[8]; // opening bytes of the file that are essentially useless
+        unsigned short header_len; // for holding information on the length of the header
+        data_file.read(waste, 8); data_file.read((char *) &header_len, 2);
+        char * header = new char[header_len]; data_file.read(header, header_len); // get the header
+        string header_str = string(header); // convert to C++ string for easier handling
+        size_t dim_indx = header_str.find_last_of(':') + 3; // find starting location of dimentions
+        size_t next_comma; //  will be pointer for next comma character
+        char * num_arr; // charater array that needs to be converted to a number
+        size_t num_size; // size of the number
+        this->dim = array<size_t,N>(); // dimention array
+        size_t curr_dim; // current dimention size
+        this->tot_size = 1; // calculate total size of the array
+        for (size_t i = 0; i < N; i++) {
+            next_comma = header_str.find_first_of(',', dim_indx);
+            if ((i == N-1) && (N != 1)) {
+                num_size = next_comma - dim_indx - 1; // ignore final bracket
+            } else {
+                num_size = next_comma - dim_indx;
+            }
+            num_arr = new char[num_size];
+            for (size_t j = 0; j < num_size; j++) { // go through and pull the number
+                num_arr[j] = header[j + dim_indx];
+            }
+            istringstream temp(num_arr); // used to convert to an actual number
+            temp >> curr_dim; // convert to size_t
+            this->dim[i] = curr_dim; this->tot_size *= curr_dim;
+            delete [] num_arr;
+        }
+        delete [] header;
+        
+        // drop out if it's a size-zero array
+        if (this->tot_size != 0) {
+            // otherwise read in the array
+            this->arr = new T[this->tot_size]; // create underlying array
+            data_file.read((char *) this->arr, (this->tot_size)*sizeof(T)); // read in remaining data
+        }
+    } else {
+        throw invalid_argument(".npy file could not be opened");
+    }
+}
+
+template <typename T, size_t N>
+ArrayND<T,N>::ArrayND(const T val, const array<size_t, N> &dim) {
     /*
     initializes an array with all elements set to the given value
 
@@ -334,50 +192,20 @@ ArrayND<T,N> ArrayND<T,N>::fill(const T val, const array<size_t, N> &dim) {
     val : value to fill the array with
     dim : dimentions of the array
 
-    Output(s):
-    arr_out : ArrayND object full of specified value
+    Output(s): ArrayND instance
     */
     if (N == 0) { // in this case, return zero array
-        return ArrayND<T, N>();
+        this->tot_size = 0;
     } else {
-        size_t tot_size = 1; // calculate total number of elements in the array
+        this->tot_size = 1; // calculate total number of elements in the array
         for (size_t i = 0; i < N; i++) {
-            tot_size *= dim[i];
+            this->tot_size *= dim[i];
         }
-        T * arr = new T[tot_size]; array<size_t,N> dim_loc = array<size_t,N>(dim);
-        // initialize to zeros
+        this->arr = new T[tot_size]; this->dim = array<size_t,N>(dim);
+        // initialize to value
         for (size_t i = 0; i < tot_size; i++) {
-            arr[i] = val;
+            this->arr[i] = val;
         }
-        return ArrayND<T, N>(arr, dim_loc, tot_size);
-    }
-}
-
-template <typename T, size_t N>
-ArrayND<T, N> * ArrayND<T, N>::fill_dyn(const T val, const array<size_t, N> &dim) {
-    /*
-    initializes a pointer to an array with all elements set to the given value
-
-    Input(s):
-    val : value to fill the array with
-    dim : dimentions of the array
-
-    Output(s):
-    arr_out : pointer to Array2D object full of specified value
-    */
-    if (N == 0) { // in this case, return zero array
-        return new ArrayND<T, N>();
-    } else {
-        size_t tot_size = 1; // calculate total number of elements in the array
-        for (size_t i = 0; i < N; i++) {
-            tot_size *= dim[i];
-        }
-        T * arr = new T[tot_size]; array<size_t,N> dim_loc = array<size_t,N>(dim);
-        // initialize to zeros
-        for (size_t i = 0; i < tot_size; i++) {
-            arr[i] = val;
-        }
-        return new ArrayND<T, N>(arr, dim_loc, tot_size);
     }
 }
 
@@ -628,7 +456,7 @@ Array1D<T>::Array1D(const Array1D<T> &arr) {
 }
 
 template <typename T>
-Array1D<T> Array1D<T>::fill(const T val, const size_t len) {
+Array1D<T>::Array1D(const T val, const size_t len) {
     /*
     initializes an array with all elements set to the given value
 
@@ -636,42 +464,59 @@ Array1D<T> Array1D<T>::fill(const T val, const size_t len) {
     val : value to fill the array with
     len : length of the array
 
-    Output(s):
-    arr_out : Array1D object full of specified value
+    Output(s): Array1D instance
     */
     if (len == 0) { // in this case, return zero array
-        return Array1D<T>();
+        this->tot_size = 0;
     } else {
-        T * arr = new T[len]; array<size_t,1> dim_loc = array<size_t,1>({len});
+        this->arr = new T[len]; this->dim = array<size_t,1>({len}); this->tot_size=len;
         // initialize to zeros
         for (size_t i = 0; i < len; i++) {
-            arr[i] = val;
+            this->arr[i] = val;
         }
-        return Array1D<T>(arr, dim_loc, len);
     }
 }
 
 template <typename T>
-Array1D<T> * Array1D<T>::fill_dyn(const T val, const size_t len) {
+Array1D<T>::Array1D(const string &filepath) {
     /*
-    initializes an array with all elements set to the given value
+    loads an 1-d array from a saved .npy type file
 
     Input(s):
-    val : value to fill the array with
-    len : length of the array
+    filepath : string containing relative or absolute path to saved data
 
-    Output(s):
-    arr_out : Array1D object full of specified value
+    Outpus(s): Array1D instance
     */
-    if (len == 0) { // in this case, return zero array
-        return new Array1D<T>();
-    } else {
-        T * arr = new T[len]; array<size_t,1> dim_loc = array<size_t,1>({len});
-        // initialize to zeros
-        for (size_t i = 0; i < len; i++) {
-            arr[i] = val;
+
+    ifstream data_file; data_file.open(filepath, ios::in | ios::binary);
+    if (data_file.is_open()) {
+        char waste[8]; // opening bytes of the file that are essentially useless
+        unsigned short header_len; // for holding information on the length of the header
+        data_file.read(waste, 8); data_file.read((char *) &header_len, 2);
+        char * header = new char[header_len]; data_file.read(header, header_len); // get the header
+        string header_str = string(header); // convert to C++ string for easier handling
+        size_t dim_indx = header_str.find_last_of(':') + 3; // find starting location of dimentions
+        this->dim = array<size_t,1>(); // dimention array
+        size_t curr_dim; // current dimention size
+        this->tot_size = 1; // calculate total size of the array
+        size_t next_comma = header_str.find_first_of(',', dim_indx); // pointer for next comma character
+        size_t num_size = next_comma - dim_indx; // size of the number
+        char * num_arr = new char[num_size]; // charater array that needs to be converted to a number
+        for (size_t j = 0; j < num_size; j++) { // go through and pull the number
+            num_arr[j] = header[j + dim_indx];
         }
-        return new Array1D<T>(arr, dim_loc, len);
+        istringstream temp(num_arr); // used to convert to an actual number
+        temp >> curr_dim; // convert to size_t
+        this->dim[0] = curr_dim; this->tot_size *= curr_dim;
+        delete [] num_arr; delete [] header;
+        // drop out if it's a size-zero array
+        if (this->tot_size != 0) {
+            // otherwise read in the array
+            this->arr = new T[this->tot_size]; // create underlying array
+            data_file.read((char *) this->arr, (this->tot_size)*sizeof(T)); // read in remaining data
+        }
+    } else {
+        throw invalid_argument(".npy file could not be opened");
     }
 }
 
@@ -689,4 +534,51 @@ T & Array1D<T>::at(const size_t loc) {
     Note(s): performs no checks on the index asked for
     */
     return (this->arr)[loc];
+}
+
+template <typename T>
+vector<T> * load_vec(const string &filepath) {
+    /*
+    loads a vector from a saved .npy type file
+
+    Input(s):
+    filepath : string containing relative or absolute path to saved data
+
+    Outpus(s): pointer to vector instance
+    */
+
+    ifstream data_file; data_file.open(filepath, ios::in | ios::binary);
+    vector<T> * to_return;
+    if (data_file.is_open()) {
+        char waste[8]; // opening bytes of the file that are essentially useless
+        unsigned short header_len; // for holding information on the length of the header
+        data_file.read(waste, 8); data_file.read((char *) &header_len, 2);
+        char * header = new char[header_len]; data_file.read(header, header_len); // get the header
+        string header_str = string(header); // convert to C++ string for easier handling
+        size_t dim_indx = header_str.find_last_of(':') + 3; // find starting location of dimentions
+        size_t curr_dim; // current dimention size
+        size_t tot_size = 1; // calculate total size of the array
+        size_t next_comma = header_str.find_first_of(',', dim_indx); // pointer for next comma character
+        size_t num_size = next_comma - dim_indx; // size of the number
+        char * num_arr = new char[num_size]; // charater array that needs to be converted to a number
+        for (size_t j = 0; j < num_size; j++) { // go through and pull the number
+            num_arr[j] = header[j + dim_indx];
+        }
+        istringstream temp(num_arr); // used to convert to an actual number
+        temp >> curr_dim; // convert to size_t
+        tot_size *= curr_dim;
+        delete [] num_arr; delete [] header;
+        // drop out if it's a size-zero array
+        if (tot_size != 0) {
+            // otherwise read in the array
+            to_return = new vector<T>(tot_size); // allocate vector
+            T * arr = to_return->data(); // access underlying array
+            data_file.read((char *) arr, tot_size*sizeof(T)); // read in remaining data
+        } else {
+            to_return = new vector<T>();
+        }
+    } else {
+        throw invalid_argument(".npy file could not be opened");
+    }
+    return to_return;
 }

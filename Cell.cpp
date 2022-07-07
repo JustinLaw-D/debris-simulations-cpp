@@ -50,31 +50,31 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
     // setup satellites
     
     this->S = new vector<Array1D<double> *>();
-    Array1D<double> * S_i = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    Array1D<double> * S_i = new Array1D<double>(0.0, num_sat_types);
     this->S_d = new vector<Array1D<double> *>();
-    Array1D<double> * S_di = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    Array1D<double> * S_di = new Array1D<double>(0.0, num_sat_types);
     this->D = new vector<Array1D<double> *>();
-    Array1D<double> * D_i = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    Array1D<double> * D_i = new Array1D<double>(0.0, num_sat_types);
     
-    this->m_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->sigma_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->sigma_s_km = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->lam_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->del_t = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->fail_t = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->tau_do = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->target_alt = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->up_time = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->alphaS = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->alphaD = Array1D<double>::zeroes_double_dyn(num_sat_types); 
-    this->alphaN = Array1D<double>::zeroes_double_dyn(num_sat_types); 
-    this->alphaR = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->P = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->AM_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->tau_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->C_s = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->expl_rate_L = Array1D<double>::zeroes_double_dyn(num_sat_types);
-    this->expl_rate_D = Array1D<double>::zeroes_double_dyn(num_sat_types);
+    this->m_s = new Array1D<double>(0.0, num_sat_types);
+    this->sigma_s = new Array1D<double>(0.0, num_sat_types);
+    this->sigma_s_km = new Array1D<double>(0.0, num_sat_types);
+    this->lam_s = new Array1D<double>(0.0, num_sat_types);
+    this->del_t = new Array1D<double>(0.0, num_sat_types);
+    this->fail_t = new Array1D<double>(0.0, num_sat_types);
+    this->tau_do = new Array1D<double>(0.0, num_sat_types);
+    this->target_alt = new Array1D<double>(0.0, num_sat_types);
+    this->up_time = new Array1D<double>(0.0, num_sat_types);
+    this->alphaS = new Array1D<double>(0.0, num_sat_types);
+    this->alphaD = new Array1D<double>(0.0, num_sat_types); 
+    this->alphaN = new Array1D<double>(0.0, num_sat_types); 
+    this->alphaR = new Array1D<double>(0.0, num_sat_types);
+    this->P = new Array1D<double>(0.0, num_sat_types);
+    this->AM_s = new Array1D<double>(0.0, num_sat_types);
+    this->tau_s = new Array1D<double>(0.0, num_sat_types);
+    this->C_s = new Array1D<double>(0.0, num_sat_types);
+    this->expl_rate_L = new Array1D<double>(0.0, num_sat_types);
+    this->expl_rate_D = new Array1D<double>(0.0, num_sat_types);
     
     for (size_t i = 0; i < num_sat_types; i++){
         Satellite sat = satellites[i];
@@ -91,16 +91,16 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
     
     // setup rocket bodies
     this->R = new vector<Array1D<double> *>();
-    Array1D<double> * R_i = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    Array1D<double> * R_i = new Array1D<double>(0.0, num_rb_types);
     
-    this->m_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
-    this->sigma_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
-    this->sigma_rb_km = Array1D<double>::zeroes_double_dyn(num_rb_types);
-    this->lam_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
-    this->AM_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
-    this->tau_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
-    this->C_rb = Array1D<double>::zeroes_double_dyn(num_rb_types);
-    this->expl_rate_R = Array1D<double>::zeroes_double_dyn(num_rb_types);
+    this->m_rb = new Array1D<double>(0.0, num_rb_types);
+    this->sigma_rb = new Array1D<double>(0.0, num_rb_types);
+    this->sigma_rb_km = new Array1D<double>(0.0, num_rb_types);
+    this->lam_rb = new Array1D<double>(0.0, num_rb_types);
+    this->AM_rb = new Array1D<double>(0.0, num_rb_types);
+    this->tau_rb = new Array1D<double>(0.0, num_rb_types);
+    this->C_rb = new Array1D<double>(0.0, num_rb_types);
+    this->expl_rate_R = new Array1D<double>(0.0, num_rb_types);
     
     for (size_t i = 0; i < num_rb_types; i++){
         RocketBody rb = rockets[i];
@@ -115,7 +115,7 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
     this->N_bins = new vector<ArrayND<double, 2> *>(); (this->N_bins)->push_back(N_i);
     
     this->logL_edges = logL_edges; this->num_L = num_L; this->chi_edges = chi_edges; this->num_chi = num_chi;
-    this->logL_ave = Array1D<double>::zeroes_double_dyn(num_L); this->chi_ave = Array1D<double>::zeroes_double_dyn(num_chi);
+    this->logL_ave = new Array1D<double>(0.0, num_L); this->chi_ave = new Array1D<double>(0.0, num_chi);
     for (size_t i = 0; i < num_L; i++) {
         (this->logL_ave)->at(i) = ((this->logL_edges)->at(i) + (this->logL_edges)->at(i+1))/2;
     } for (size_t i = 0; i < num_chi; i++) {
@@ -129,10 +129,10 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
 
     // setup other matrices
     
-    this->cat_sat_N = ArrayND<bool,3>::fill_dyn(true, array<size_t,3>({this->num_sat_types, this->num_L, this->num_chi}));
-    this->cat_rb_N = ArrayND<bool,3>::fill_dyn(true, array<size_t,3>({this->num_rb_types, this->num_L, this->num_chi}));
-    this->ascending = Array1D<bool>::fill_dyn(false, this->num_sat_types);
-    this->trackable = ArrayND<bool,2>::fill_dyn(false, array<size_t,2>({this->num_L, this->num_chi}));
+    this->cat_sat_N = new ArrayND<bool,3>(true, array<size_t,3>({this->num_sat_types, this->num_L, this->num_chi}));
+    this->cat_rb_N = new ArrayND<bool,3>(true, array<size_t,3>({this->num_rb_types, this->num_L, this->num_chi}));
+    this->ascending = new Array1D<bool>(false, this->num_sat_types);
+    this->trackable = new ArrayND<bool,2>(false, array<size_t,2>({this->num_L, this->num_chi}));
     for (size_t i = 0; i < this->num_sat_types; i++) {
         if (this->target_alt->at(i) > (this->alt + (this->dh)/2)) {(this->ascending)->at(i) = true;}
     }

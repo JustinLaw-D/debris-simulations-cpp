@@ -181,6 +181,8 @@ class NCell:
                     up_time[i][j] = 1/10
                 if del_t[i][j] is None:
                     del_t[i][j] = 5
+                if fail_t[i][j] is None:
+                    fail_t[i][j] = 5
                 if expl_rate_L[j] is None:
                     expl_rate_L[j] = 0
                 if expl_rate_D[j] is None:
@@ -208,7 +210,7 @@ class NCell:
                 if tau_do[i][j] is None:
                     tau_do[i][j] = 0 # this value is used to communicate the value not being set
                 sat = Satellite(S[i][j], S_d[i][j], D[i][j], m_s[j], sigma_sat[j], lam[j], del_t[i][j],
-                                tau_do[i][j], target_alts[j], up_time[i][j], (alphaS[i][j], alphaD[i][j],
+                                tau_do[i][j], target_alts[j], up_time[i][j], fail_t[i][j], (alphaS[i][j], alphaD[i][j],
                                 alphaN[i][j], alphaR[i][j]), P[i][j], AM_sat[j], 0, C_sat[j], expl_rate_L[j], expl_rate_D[j])
                 sat_list.append(sat)
 
@@ -292,11 +294,11 @@ class NCell:
                 if t_arr[i] - prev_t >= gap:
                     prev_t = t_arr[i]
                     filter[i] = True
-        np.save(filepath + "alts.npy", self.alts)
-        np.save(filepath + "dhs.npy", self.dh)
-        np.save(filepath + "t.npy", t_arr[filter])
-        np.save(filepath + "logL.npy", self.logL_edges)
-        np.save(filepath + "chi.npy", self.chi_edges)
+        np.save(true_path + "alts.npy", self.alts)
+        np.save(true_path + "dhs.npy", self.dh)
+        np.save(true_path + "t.npy", t_arr[filter])
+        np.save(true_path + "logL.npy", self.logL_edges)
+        np.save(true_path + "chi.npy", self.chi_edges)
 
         # save the Cells
         for i in range(self.num_cells):

@@ -5,6 +5,10 @@
         "ostream": "cpp",
         "new": "cpp",
         "cstddef": "cpp",
-        "array": "cpp"
+        "array": "cpp",
+        "iosfwd": "cpp",
+        "stdexcept": "cpp",
+        "sstream": "cpp",
+        "*.tcc": "cpp"
     }
 }

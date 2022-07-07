@@ -69,8 +69,7 @@ class Cell:
         # save parameters
         csv_file = open(filepath + 'params.csv', 'w', newline='')
         csv_writer = csv.writer(csv_file, dialect='unix')
-        csv_writer.writerow([self.num_sat_types, self.num_rb_types, self.alt, self.dh, self.v, self.v_orbit, self.num_L,
-                              self.num_chi])
+        csv_writer.writerow([self.num_sat_types, self.num_rb_types, self.alt, self.dh, self.v, self.num_L, self.num_chi])
         csv_file.close()
 
         # write easy arrays
@@ -82,7 +81,7 @@ class Cell:
         np.save(filepath + "chi.npy", self.chi_edges)
 
         # write N_bins values
-        bin_path = filepath + "N_bins"
+        bin_path = filepath + "N_bins/"
         os.mkdir(bin_path)
         index = 0
         for i in range(len(self.N_bins)):
@@ -124,9 +123,8 @@ class Cell:
             cell.alt = float(row[2])
             cell.dh = float(row[3])
             cell.v = float(row[4])
-            cell.v_orbit = float(row[5])
-            cell.num_L = int(row[6])
-            cell.num_chi = int(row[7])
+            cell.num_L = int(row[5])
+            cell.num_chi = int(row[6])
         csv_file.close()
 
         # load basic arrays
