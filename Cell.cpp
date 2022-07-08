@@ -15,7 +15,7 @@ using namespace std;
 
 Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i, size_t num_sat_types,
            size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
-           vector<Event *> * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v,
+           vector<Event *> * event_list, size_t num_events, double alt, double dh, Array1D<double> * tau_N, double v,
            vector<double> * C_l, vector<double> * C_nl) {
     /*
     detailed constructor for Cell class
@@ -287,7 +287,7 @@ Cell::Cell(const string &filepath) {
     }
 
     // set up blank arrays for NCell and Cell to handle
-    this->tau_N = new ArrayND<double,2>(array<size_t,2>({this->num_L, this->num_chi}));
+    this->tau_N = new Array1D<double>(this->num_chi);
     this->cat_sat_N = new ArrayND<bool,3>(true, array<size_t,3>({this->num_sat_types, this->num_L, this->num_chi}));
     this->cat_rb_N = new ArrayND<bool,3>(true, array<size_t,3>({this->num_rb_types, this->num_L, this->num_chi}));
 
@@ -652,7 +652,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
     // handle debris decays
     for (size_t i = 0; i < this->num_L; i++) {
         for (size_t j = 0; j < this->num_chi; j++) {
-            N_out.at(array<size_t,2>({i,j})) = N.at(array<size_t,2>({i,j}))/(this->tau_N->at(array<size_t,2>({i,j})));
+            N_out.at(array<size_t,2>({i,j})) = N.at(array<size_t,2>({i,j}))/(this->tau_N->at(j));
         }
     }
 

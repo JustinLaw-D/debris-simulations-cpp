@@ -52,7 +52,7 @@ class Cell
         size_t num_events; // number of events in the event_list
         double alt; // altitude of the shell centre (km)
         double dh; // width of the shell (km)
-        ArrayND<double, 2> * tau_N; // decay lifetimes for each debris bin (yr)
+        Array1D<double> * tau_N; // decay lifetimes for each debris bin (yr)
         double v; // relative velocity of collisions (km/s)
         double vyr; // relative velocity of collisions (m/s)
         double v_orbit; // orbital velocity of the shell (km/s)
@@ -68,7 +68,7 @@ class Cell
         // full constructor
         Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i, size_t num_sat_types,
              size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
-             vector<Event *> * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v,
+             vector<Event *> * event_list, size_t num_events, double alt, double dh, Array1D<double> * tau_N, double v,
              vector<double> * C_l, vector<double> * C_nl);
         Cell(const string &filepath); // load cell from file
         void load_sat(const string &filepath, size_t i); // loads a single satellite type into the cell

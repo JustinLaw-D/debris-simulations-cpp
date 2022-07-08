@@ -89,7 +89,7 @@ void cell_test() {
         logL_edges->at(i) = -3 + 0.3*(static_cast<double>(i));
     }
     ArrayND<double,2> * N_i = new ArrayND<double,2>(0.0, array<size_t,2>({num_L, num_chi}));
-    ArrayND<double,2> * tau_N = new ArrayND<double,2>(5.0, array<size_t,2>({num_L, num_chi}));
+    Array1D<double> * tau_N = new Array1D<double>(5.0, num_chi);
     vector<Event *> * event_list = new vector<Event *>();
     size_t num_events = 0;
     double alt = 550.0; double dh = 50.0; double v = 10.0;
