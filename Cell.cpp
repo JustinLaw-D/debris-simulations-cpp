@@ -9,6 +9,7 @@
 #include <cmath>
 #include <math.h>
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
@@ -143,6 +144,154 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
             }
         }
     }
+    this->update_cat_N();
+}
+
+Cell::Cell(const string &filepath) {
+    /*
+    loads Cell object from saved data
+
+    Input(s):
+    filepath : string containing relative or absolute path to saved data
+
+    Output(s):
+    NCell instance
+
+    Note(s): the intention is to create objects in Python, then pass them over to C++
+             via this saving/reading method
+    */
+    ifstream param_file; // file containing basic Cell parameters
+    param_file.open(filepath + string("params.csv"), ios::in); // open relevant file
+    if (param_file.is_open()) {
+        vector<string> row; string line; string word; // extract the data
+        while(getline(param_file, line)) {
+            stringstream str(line);
+            while(getline(str, word, ',')) {
+                word.erase(remove(word.begin(), word.end(), '"'), word.end());
+                row.push_back(word);
+            }
+        }
+        istringstream num_sat_types_temp(row[0]); // need to make these into string streams to convert
+        istringstream num_rb_types_temp(row[1]);
+        istringstream num_L_temp(row[5]);
+        istringstream num_chi_temp(row[6]);
+        num_L_temp >> this->num_L; num_chi_temp >> this->num_chi;
+        num_rb_types_temp >> this->num_rb_types; num_sat_types_temp >> this->num_sat_types;
+        this->alt = stod(row[2]); this->dh = stod(row[3]); this->v = stod(row[4]);
+        // calculate related parameters
+        this->logL_ave = new Array1D<double>(num_L); this->chi_ave = new Array1D<double>(num_chi);
+        for (size_t i = 0; i < num_L; i++) {
+            (this->logL_ave)->at(i) = ((this->logL_edges)->at(i) + (this->logL_edges)->at(i+1))/2;
+        } for (size_t i = 0; i < num_chi; i++) {
+            (this->chi_ave)->at(i) = ((this->chi_edges)->at(i) + (this->chi_edges)->at(i+1))/2;
+        }
+        this->vyr = v*60.0*60.0*24.0*365.25; this->v_orbit = sqrt(G*Me/((Re + alt)*1000));
+        this->V = 4*M_PI*(Re + this->alt)*(Re + this->alt)*(this->dh);
+        this->trackable = new ArrayND<bool,2>(false, array<size_t,2>({this->num_L, this->num_chi}));
+        for (size_t i = 0; i < this->num_L; i++) {
+            if (pow(10, logL_ave->at(i)) >= 1.0/10.0) {
+                for (size_t j = 0; j < this->num_chi; j++) {
+                    (this->trackable)->at(array<size_t,2>({i,j})) = true;
+                }
+            }
+        }
+    } else {
+        throw invalid_argument("NCell params.csv file could not be opened");
+    }
+    param_file.close();
+
+    // pull basic arrays and vectors associated with Cell
+    this->C_l = load_vec<double>(filepath + string("dataCl.npy"));
+    this->C_nl = load_vec<double>(filepath + string("dataCnl.npy"));
+    this->logL_edges = new Array1D<double>(filepath + string("logL.npy"));
+    this->chi_edges = new Array1D<double>(filepath + string("chi.npy"));
+    // calculate related values
+    for (size_t i = 0; i < this->num_L; i++) { // setup average arrays
+        this->logL_ave->at(i) = (this->logL_edges->at(i) + this->logL_edges->at(i+1))/2;
+    } 
+    for (size_t i = 0; i < this->num_chi; i++) {
+        this->chi_ave->at(i) = (this->chi_edges->at(i) + this->chi_edges->at(i+1))/2;
+    }
+
+    // load N_bin values
+    this->N_bins = new vector<ArrayND<double, 2> *>;
+    string N_bins_path = filepath + string("N_bins/");
+    ArrayND<double, 2> * N_bin_loc;
+    size_t i = 0; // count through the files
+    bool keep_going = true; // whether to keep trying new files
+    while (keep_going) {
+        try {
+            N_bin_loc = new ArrayND<double,2>(N_bins_path + to_string(i) + string(".npy")); // get file
+            this->N_bins->push_back(N_bin_loc);
+            i++;
+        } catch (invalid_argument &e) { // throws this when you reach the end of the files
+            keep_going = false;
+        }
+    }
+
+    size_t num_data = this->N_bins->size(); // number of time data points
+
+    // setup satellite parameters
+    this->S = new vector<Array1D<double> *>();
+    this->S_d = new vector<Array1D<double> *>();
+    this->D = new vector<Array1D<double> *>();
+    for (size_t i = 0; i < num_data; i++) { // fill with empty arrays
+        this->S->push_back(new Array1D<double>(this->num_sat_types));
+        this->S_d->push_back(new Array1D<double>(this->num_sat_types));
+        this->D->push_back(new Array1D<double>(this->num_sat_types));
+    }
+    
+    this->m_s = new Array1D<double>(this->num_sat_types);
+    this->sigma_s = new Array1D<double>(this->num_sat_types);
+    this->sigma_s_km = new Array1D<double>(this->num_sat_types);
+    this->lam_s = new Array1D<double>(this->num_sat_types);
+    this->del_t = new Array1D<double>(this->num_sat_types);
+    this->fail_t = new Array1D<double>(this->num_sat_types);
+    this->tau_do = new Array1D<double>(this->num_sat_types);
+    this->target_alt = new Array1D<double>(this->num_sat_types);
+    this->up_time = new Array1D<double>(this->num_sat_types);
+    this->alphaS = new Array1D<double>(this->num_sat_types);
+    this->alphaD = new Array1D<double>(this->num_sat_types); 
+    this->alphaN = new Array1D<double>(this->num_sat_types); 
+    this->alphaR = new Array1D<double>(this->num_sat_types);
+    this->P = new Array1D<double>(this->num_sat_types);
+    this->AM_s = new Array1D<double>(this->num_sat_types);
+    this->tau_s = new Array1D<double>(this->num_sat_types);
+    this->C_s = new Array1D<double>(this->num_sat_types);
+    this->expl_rate_L = new Array1D<double>(this->num_sat_types);
+    this->expl_rate_D = new Array1D<double>(this->num_sat_types);
+
+    // load satellites
+    for (size_t i = 0; i < this->num_sat_types; i++) {
+        this->load_sat(filepath + string("Satellite") + to_string(i) + string("/"), i);
+    }
+
+    // setup rocket body parameters
+    this->R = new vector<Array1D<double> *>();
+    for (size_t i = 0; i < num_data; i++) { // fill with empty arrays
+        this->R->push_back(new Array1D<double>(this->num_rb_types));
+    }
+
+    this->m_rb = new Array1D<double>(this->num_rb_types);
+    this->sigma_rb = new Array1D<double>(this->num_rb_types);
+    this->sigma_rb_km = new Array1D<double>(this->num_rb_types);
+    this->lam_rb = new Array1D<double>(this->num_rb_types);
+    this->AM_rb = new Array1D<double>(this->num_rb_types);
+    this->tau_rb = new Array1D<double>(this->num_rb_types);
+    this->C_rb = new Array1D<double>(this->num_rb_types);
+    this->expl_rate_R = new Array1D<double>(this->num_rb_types);
+
+    // load rockets
+    for (size_t i = 0; i < this->num_rb_types; i++) {
+        this->load_rb(filepath + string("RocketBody") + to_string(i) + string("/"), i);
+    }
+
+    // set up blank arrays for NCell and Cell to handle
+    this->tau_N = new ArrayND<double,2>(array<size_t,2>({this->num_L, this->num_chi}));
+    this->cat_sat_N = new ArrayND<bool,3>(true, array<size_t,3>({this->num_sat_types, this->num_L, this->num_chi}));
+    this->cat_rb_N = new ArrayND<bool,3>(true, array<size_t,3>({this->num_rb_types, this->num_L, this->num_chi}));
+
+    // update catestrophic arrays
     this->update_cat_N();
 }
 

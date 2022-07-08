@@ -6,7 +6,7 @@ import csv
 class Satellite:
 
     def __init__(self, S_i, S_di, D_i, m, sigma, lam, del_t, tau_do, target_alt, up_time, fail_t, 
-                 alpha, P, AM, tau, C, expl_rate_L, expl_rate_D):
+                 alpha, P, AM, C, expl_rate_L, expl_rate_D):
         '''
         constructor method for Satellite class
 
@@ -27,7 +27,6 @@ class Satellite:
                 and rocket body respectively
         P : post-mission disposal probability
         AM : area-to-mass ratio of the satellite (m^2/kg)
-        tau : atmospheric drag lifetime of a satellite (yr)
         C : fit constant for explosions
         expl_rate_L : number of explosions that occur in a 1yr period with a population 
                       of 100 live satellites
@@ -55,7 +54,6 @@ class Satellite:
         self.alphaS, self.alphaD, self.alphaN, self.alphaR = alpha
         self.P = P
         self.AM = AM
-        self.tau = tau
         self.C = C
         self.expl_rate_L = expl_rate_L
         self.expl_rate_D = expl_rate_D
@@ -77,7 +75,7 @@ class Satellite:
         csv_writer = csv.writer(csv_file, dialect='unix')
         csv_writer.writerow([self.m, self.sigma, self.lam, self.del_t, self.fail_t, self.tau_do, self.target_alt, 
                              self.up_time, self.alphaS, self.alphaD, self.alphaN, self.alphaR, self.P, 
-                             self.AM, self.tau, self.C, self.expl_rate_L, self.expl_rate_D])
+                             self.AM, self.C, self.expl_rate_L, self.expl_rate_D])
         csv_file.close()
 
         # save data
@@ -108,8 +106,8 @@ class Satellite:
             sat.m, sat.sigma, sat.lam, sat.del_t = float(row[0]), float(row[1]), float(row[2]), float(row[3])
             sat.fail_t, sat.tau_do, sat.target_alt, sat.up_time = float(row[4]), float(row[5]), float(row[6]), float(row[7])
             sat.alphaS, sat.alphaD, sat.alphaN, sat.alphaR = float(row[8]), float(row[9]), float(row[10]), float(row[11])
-            sat.P, sat.AM, sat.tau, sat.C = float(row[12]), float(row[13]), float(row[14]), float(row[15])
-            sat.expl_rate_L, sat.expl_rate_D = float(row[16]), float(row[17])
+            sat.P, sat.AM, sat.C, sat.expl_rate_L = float(row[12]), float(row[13]), float(row[14]), float(row[15])
+            sat.expl_rate_D = float(row[16])
         csv_file.close()
 
         # load data
@@ -121,7 +119,7 @@ class Satellite:
 
 class RocketBody:
 
-    def __init__(self, num, m, sigma, lam, AM, tau, C, expl_rate):
+    def __init__(self, num, m, sigma, lam, AM, C, expl_rate):
         '''
         constructor method for RocketBody class
 
@@ -131,7 +129,6 @@ class RocketBody:
         sigma : collision cross-section of each rocket body (m^2)
         lam : launch rate of the rocket bodies (1/yr)
         AM : area-to-mass ratio of a rocket body (m^2/kg)
-        tau : atmospheric drag lifetime of a rocket body (yr)
         C : fit constant for explosions
         expl_rate : number of explosions that occur in a 1yr period with a population 
                     of 100 rocket bodies
@@ -148,7 +145,6 @@ class RocketBody:
         self.sigma = sigma
         self.lam = lam
         self.AM = AM
-        self.tau = tau
         self.C = C
         self.expl_rate = expl_rate
 
@@ -168,7 +164,7 @@ class RocketBody:
         # save parameters
         csv_file = open(filepath + 'params.csv', 'w', newline='')
         csv_writer = csv.writer(csv_file, dialect='unix')
-        csv_writer.writerow([self.m, self.sigma, self.lam, self.AM, self.tau, self.C, self.expl_rate])
+        csv_writer.writerow([self.m, self.sigma, self.lam, self.AM, self.C, self.expl_rate])
         csv_file.close()
 
         # save data
@@ -195,7 +191,7 @@ class RocketBody:
         csv_reader = csv.reader(csv_file, dialect='unix')
         for row in csv_reader: # only one row, but this extracts it
             rb.m, rb.sigma, rb.lam, rb.AM = float(row[0]), float(row[1]), float(row[2]), float(row[3])
-            rb.tau, rb.C, rb.expl_rate = float(row[4]), float(row[5]), float(row[6])
+            rb.C, rb.expl_rate = float(row[4]), float(row[5])
         csv_file.close()
 
         # load data

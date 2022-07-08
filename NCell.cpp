@@ -47,31 +47,25 @@ NCell::NCell(string &filepath) {
     }
     param_file.close();
 
-    // parse time array
-    this->t = new vector<double>();
-    ifstream t_file; t_file.open(filepath + string("t.npy"), ios::in | ios::binary);
-    if (t_file.is_open()) {
-        char waste[8]; // opening bytes of the file that are essentially useless
-        unsigned short header_len; // for holding information on the length of the header
-        t_file.read(waste, 8); t_file.read((char *) &header_len, 2);
-        // header info is useless
-        char * header_waste = new char[header_len]; t_file.read(header_waste, header_len); delete [] header_waste;
-        double * data = new double[8]; // pull data in 64 byte chuncks
-        t_file.read((char *)data, 64);
-        while (!t_file.eof()) { // keep going until eof is set
-            for (size_t i = 0; i < 8; i++) {t->push_back(data[i]);}
-            t_file.read((char *)data, 64);
-        }
-        streamsize to_write = t_file.gcount()/8; // figure out how many numbers were read on the last call
-        for (streamsize i = 0; i < to_write; i++) {t->push_back(data[i]);}
-        for (size_t i = 0; i < t->size(); i++) { // temporary for tests
-            cout << t->at(i) << endl;
-        }
-    } else {
-        cout << "Ah this one" << endl;
-        throw invalid_argument("NCell t.npy file could not be opened");
+    // pull non-cell based arrays and data
+    this->t = load_vec<double>(filepath + string("t.npy"));
+    this->alts = new Array1D<double>(filepath + string("alts.npy"));
+    this->dhs = new Array1D<double>(filepath + string("dhs.npy"));
+    this->logL_edges = new Array1D<double>(filepath + string("logL.npy"));
+    this->chi_edges = new Array1D<double>(filepath + string("chi.npy"));
+    this->time = t->size() - 1; this->lupdate_time = this->time;
+    this->logL_ave = new Array1D<double>(this->num_L);
+    this->chi_ave = new Array1D<double>(this->num_chi);
+    for (size_t i = 0; i < this->num_L; i++) { // setup average arrays
+        this->logL_ave->at(i) = (this->logL_edges->at(i) + this->logL_edges->at(i+1))/2;
+    } 
+    for (size_t i = 0; i < this->num_chi; i++) {
+        this->chi_ave->at(i) = (this->chi_edges->at(i) + this->chi_edges->at(i+1))/2;
     }
-    
+    for (size_t i = 0; i < this->num_cells; i++) {
+        this->cells->push_back(new Cell(filepath + "cell" + to_string(i) + "/"));
+    }
+    // TODO: ADD PROBABILITY TABLES, UPDATE DRAG LIFETIMES
 }
 
 NCell::~NCell() {}

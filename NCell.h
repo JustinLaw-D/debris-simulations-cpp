@@ -23,7 +23,7 @@ class NCell {
         size_t time;
         size_t lupdate_time;
         vector<double> * t;
-        Cell * cells;
+        vector<Cell *> * cells;
         size_t num_cells;
         Array1D<double> * logL_edges;
         Array1D<double> * logL_ave;

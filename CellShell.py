@@ -7,7 +7,7 @@ import csv
 
 class Cell:
     
-    def __init__(self, S_i, R_i, N_i, logL_edges, chi_edges, alt, dh, tau_N, v=None):
+    def __init__(self, S_i, R_i, N_i, logL_edges, chi_edges, alt, dh, v=None):
         '''Constructor for Cell class
     
         Parameter(s):
@@ -18,7 +18,6 @@ class Cell:
         chi_edges : bin edges in log10(A/M) (log10(m^2/kg))
         alt : altitude of the shell centre (km)
         dh : width of the shell (km)
-        tau_N : array of atmospheric drag lifetimes for debris (yr)
         
         Keyword Parameter(s):
         v : relative collision speed (km/s, default 10km/s)
@@ -44,7 +43,6 @@ class Cell:
         self.C_nl = [0] # non-lethal collisions
         self.alt = alt
         self.dh = dh
-        self.tau_N = tau_N
         self.v = v
         self.logL_edges = logL_edges
         self.chi_edges = chi_edges
@@ -76,7 +74,6 @@ class Cell:
         Cl_array, Cnl_array = np.array(self.C_l)[filter], np.array(self.C_nl)[filter]
         np.save(filepath + "dataCl.npy", Cl_array)
         np.save(filepath + "dataCnl.npy", Cnl_array)
-        np.save(filepath + "tau_N.npy", self.tau_N)
         np.save(filepath + "logL.npy", self.logL_edges)
         np.save(filepath + "chi.npy", self.chi_edges)
 
@@ -130,7 +127,6 @@ class Cell:
         # load basic arrays
         cell.C_l = np.load(filepath + "dataCl.npy")
         cell.C_nl = np.load(filepath + "dataCnl.npy")
-        cell.tau_N = np.load(filepath + "tau_N.npy")
         cell.logL_edges = np.load(filepath + "logL.npy")
         cell.chi_edges = np.load(filepath + "chi.npy")
 

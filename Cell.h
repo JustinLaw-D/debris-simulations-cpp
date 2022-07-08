@@ -70,6 +70,9 @@ class Cell
              size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
              vector<Event *> * event_list, size_t num_events, double alt, double dh, ArrayND<double,2> * tau_N, double v,
              vector<double> * C_l, vector<double> * C_nl);
+        Cell(const string &filepath); // load cell from file
+        void load_sat(const string &filepath, size_t i); // loads a single satellite type into the cell
+        void load_rb(const string &filepath, size_t i); // loads a single rocket body into the cell
         // calculating local rates of change
         void dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt, Array1D<double> &dRdt,
                        double &dC_ldt, double &dC_nldt, Array1D<double> &S_out, Array1D<double> &S_dout, Array1D<double> &D_out, 

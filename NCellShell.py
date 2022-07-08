@@ -211,7 +211,7 @@ class NCell:
                     tau_do[i][j] = 0 # this value is used to communicate the value not being set
                 sat = Satellite(S[i][j], S_d[i][j], D[i][j], m_s[j], sigma_sat[j], lam[j], del_t[i][j],
                                 tau_do[i][j], target_alts[j], up_time[i][j], fail_t[i][j], (alphaS[i][j], alphaD[i][j],
-                                alphaN[i][j], alphaR[i][j]), P[i][j], AM_sat[j], 0, C_sat[j], expl_rate_L[j], expl_rate_D[j])
+                                alphaN[i][j], alphaR[i][j]), P[i][j], AM_sat[j], C_sat[j], expl_rate_L[j], expl_rate_D[j])
                 sat_list.append(sat)
 
             rb_list = []
@@ -233,11 +233,11 @@ class NCell:
                     AM_rb[j] = 1/(20*2.2)
 
                 # compute atmospheric drag lifetime for rocket bodies in the shell
-                rb = RocketBody(R_i[i][j], m_rb[j], sigma_rb[j], lam_rb[i][j], AM_rb[j], 0, C_rb[j], expl_rate_R[j])
+                rb = RocketBody(R_i[i][j], m_rb[j], sigma_rb[j], lam_rb[i][j], AM_rb[j], C_rb[j], expl_rate_R[j])
                 rb_list.append(rb)
 
             # calculate decay paremeters for debris, initial debris values
-            N_initial, tau_N = np.zeros((num_L, num_chi)), np.zeros((num_L, num_chi))
+            N_initial = np.zeros((num_L, num_chi))
             # generate initial distributions
             lethal_L = np.log10(randL(N_l[i], 1e-1, L_max, 'expl')) # explosions are the main source https://www.esa.int/esapub/bulletin/bullet109/chapter16_bul109.pdf
             nlethal_L = np.log10(randL(delta[i]*N_l[i], L_min, 1e-1, 'expl'))
@@ -249,7 +249,7 @@ class NCell:
                 N_initial[j,0] = bin_L # put everything in the lowest A/M bin
 
             # initialize cell
-            cell = Cell(sat_list, rb_list, N_initial, self.logL_edges, self.chi_edges, self.alts[i], self.dh[i], tau_N, v=v[i])
+            cell = Cell(sat_list, rb_list, N_initial, self.logL_edges, self.chi_edges, self.alts[i], self.dh[i], v=v[i])
             self.cells.append(cell)
             if i == len(S) - 1: self.upper_N = deepcopy(N_initial) # take the debris field above to be initial debris of top
 
