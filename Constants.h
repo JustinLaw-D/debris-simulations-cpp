@@ -1,5 +1,5 @@
 // file to hold the constants used by the program
-// last updated : 2022-06-30
+// last updated : 2022-07-08
 
 #include <cstddef>
 #pragma once
@@ -8,6 +8,7 @@
 const double G = 6.6743e-11;
 const double Re = 6371.0;
 const double Me = 5.97219e+24;
+const double SQRT2 = 1.4142135623730951;
 
 // atmospheric data
 const size_t num_alts = 41;

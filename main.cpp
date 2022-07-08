@@ -5,9 +5,11 @@
 #include "ObjectsEvents.h"
 #include "Cell.h"
 #include "NCell.h"
+#include "BreakupModel.h"
 #include <array>
 #include <vector>
 #include <iostream>
+#include <chrono>
 using namespace std;
 
 void array_test() {
@@ -106,7 +108,7 @@ void load_test() {
 }
 
 void atmospheric_test() {
-    cout << drag_lifetime_default(600.0+25.0/2.0, 600.0-25.0/2.0, 1.0/(20.0*2.2), 50) << endl;
+    cout << drag_lifetime_default(330.0+5.0/2.0, 335.0-25.0/2.0, 1.0/40.0, 1) << endl;
 }
 
 int main() {
@@ -114,6 +116,6 @@ int main() {
     //array1D_test();
     //cell_test();
     //load_test();
-    //atmospheric_test();
+    atmospheric_test();
     return 0;
 }

@@ -196,7 +196,7 @@ Cell::Cell(const string &filepath) {
             }
         }
     } else {
-        throw invalid_argument("NCell params.csv file could not be opened");
+        throw invalid_argument("Cell params.csv file could not be opened");
     }
     param_file.close();
 
@@ -293,6 +293,100 @@ Cell::Cell(const string &filepath) {
 
     // update catestrophic arrays
     this->update_cat_N();
+}
+
+void Cell::load_sat(const string &filepath, size_t i) {
+    /*
+    loads a saved satellite object into the cell
+
+    Input(s):
+    filepath : relative or absolute filepath to the saved satellite object
+    i : indicates that this is the "ith" satellite type in the cell
+
+    Output(s): None
+
+    Note(s): function assumes that all relavant variables have already been
+             allocated to the correct size.
+    */
+    ifstream param_file; // file containing basic Satellite parameters
+    param_file.open(filepath + string("params.csv"), ios::in); // open relevant file
+    if (param_file.is_open()) {
+        vector<string> row; string line; string word; // extract the data
+        while(getline(param_file, line)) {
+            stringstream str(line);
+            while(getline(str, word, ',')) {
+                word.erase(remove(word.begin(), word.end(), '"'), word.end());
+                row.push_back(word);
+            }
+        }
+        this->m_s->at(i) = stod(row[0]); this->sigma_s->at(i) = stod(row[1]);
+        this->lam_s->at(i) = stod(row[2]); this->del_t->at(i) = stod(row[3]);
+        this->fail_t->at(i) = stod(row[4]); this->tau_do->at(i) = stod(row[5]);
+        this->target_alt->at(i) = stod(row[6]); this->up_time->at(i) = stod(row[7]);
+        this->alphaS->at(i) = stod(row[8]); this->alphaD->at(i) = stod(row[9]);
+        this->alphaN->at(i) = stod(row[10]); this->alphaR->at(i) = stod(row[11]);
+        this->P->at(i) = stod(row[12]); this->AM_s->at(i) = stod(row[13]);
+        this->C_s->at(i) = stod(row[14]); this->expl_rate_L->at(i) = stod(row[15]);
+        this->expl_rate_D->at(i) = stod(row[16]);
+        // calculate related parameters
+        this->sigma_s_km->at(i) = (this->sigma_s->at(i))/1e6;
+    } else {
+        throw invalid_argument("Satellite params.csv file could not be opened");
+    }
+    param_file.close();
+    
+    // get tracked values
+    Array1D<double> S_temp = Array1D<double>(filepath + string("dataS.npy"));
+    Array1D<double> SD_temp = Array1D<double>(filepath + string("dataSd.npy"));
+    Array1D<double> D_temp = Array1D<double>(filepath + string("dataD.npy"));
+    size_t tot_size = S_temp.get_tot_size();
+    for (size_t j = 0; j < tot_size; j++) {
+        this->S->at(j)->at(i) = S_temp.at(j);
+        this->S_d->at(j)->at(i) = SD_temp.at(j);
+        this->D->at(j)->at(i) = D_temp.at(j);
+    }
+}
+
+void Cell::load_rb(const string &filepath, size_t i) {
+    /*
+    loads a saved rocket body object into the cell
+
+    Input(s):
+    filepath : relative or absolute filepath to the saved rocket body
+    i : indicates that this is the "ith" rocket type in the cell
+
+    Output(s): None
+
+    Note(s): function assumes that all relavant variables have already been
+             allocated to the correct size.
+    */
+    ifstream param_file; // file containing basic RocketBody parameters
+    param_file.open(filepath + string("params.csv"), ios::in); // open relevant file
+    if (param_file.is_open()) {
+        vector<string> row; string line; string word; // extract the data
+        while(getline(param_file, line)) {
+            stringstream str(line);
+            while(getline(str, word, ',')) {
+                word.erase(remove(word.begin(), word.end(), '"'), word.end());
+                row.push_back(word);
+            }
+        }
+        this->m_rb->at(i) = stod(row[0]); this->sigma_rb->at(i) = stod(row[1]);
+        this->lam_rb->at(i) = stod(row[2]); this->AM_rb->at(i) = stod(row[3]);
+        this->C_rb->at(i) = stod(row[4]); this->expl_rate_R->at(i) = stod(row[5]);
+        // calculate related parameters
+        this->sigma_rb_km->at(i) = (this->sigma_rb->at(i))/1e6;
+    } else {
+        throw invalid_argument("RocketBody params.csv file could not be opened");
+    }
+    param_file.close();
+    
+    // get tracked values
+    Array1D<double> R_temp = Array1D<double>(filepath + string("data.npy"));
+    size_t tot_size = R_temp.get_tot_size();
+    for (size_t j = 0; j < tot_size; j++) {
+        this->R->at(j)->at(i) = R_temp.at(j);
+    }
 }
 
 void Cell::update_cat_N() {
