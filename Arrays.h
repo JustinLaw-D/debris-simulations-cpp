@@ -20,7 +20,6 @@ class ArrayND
         T * arr; // pointer to the array
         array<size_t, N> dim; // list of dimentions
         size_t tot_size; // total number of elements
-        ArrayND(T * arr, const array<size_t, N> dim, const size_t tot_size); // explicit constructor
         void print_dim(array<size_t, N> partial_loc, size_t num_set, size_t curr_true_loc, size_t curr_skip_mul);
 
     public:
@@ -47,9 +46,6 @@ class ArrayND
 
 template<typename T>
 class Array1D : public ArrayND<T,1> {
-
-    private:
-        Array1D(T * arr, const array<size_t, 1> dim, const size_t tot_size); // explicit constructor
 
     public:
         Array1D(); // basic constructor, creates size zero array
@@ -89,24 +85,6 @@ ArrayND<T, N>::ArrayND(const array<size_t, N> &dim) {
         tot_size *= dim[i];
     }
     this->arr = new T[tot_size]; this->dim = array<size_t, N>(dim); this->tot_size = tot_size;
-}
-
-template <typename T, size_t N>
-ArrayND<T, N>::ArrayND(T * arr, const array<size_t, N> dim, const size_t tot_size) {
-    /*
-    most basic initializer for a n-d array
-
-    Input(s):
-    arr : nd array of values
-    dim : list of dimentions of the array
-    tot_size : the total number of elements in the array
-
-    Output(s):
-    arr_out : ArrayND object with specified parameters
-
-    Note(s): expects to take ownership of all pointers given
-    */
-    this->arr = arr; this->dim = array<size_t, N>(dim); this->tot_size = tot_size;
 }
 
 template <typename T, size_t N>
@@ -415,24 +393,6 @@ Array1D<T>::Array1D(const size_t len) {
     arr_out : Array1D object with specified size
     */
     this->arr = new T[len]; this->dim = array<size_t, 1>({len}); this->tot_size = len;
-}
-
-template <typename T>
-Array1D<T>::Array1D(T * arr, const array<size_t, 1> dim, const size_t tot_size) {
-    /*
-    most basic initializer for a n-d array
-
-    Input(s):
-    arr : nd array of values
-    dim : list of dimentions of the array
-    tot_size : the total number of elements in the array
-
-    Output(s):
-    arr_out : Array1D object with specified parameters
-
-    Note(s): expects to take ownership of all pointers given
-    */
-    this->arr = arr; this->dim = array<size_t, 1>(dim); this->tot_size = tot_size;
 }
 
 template <typename T>

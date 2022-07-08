@@ -3,8 +3,7 @@
 #include "Arrays.h"
 #include "AtmosphericDecayModels.h"
 #include "ObjectsEvents.h"
-#include "Cell.h"
-#include "NCell.h"
+#include "Cells.h"
 #include "BreakupModel.h"
 #include <array>
 #include <vector>

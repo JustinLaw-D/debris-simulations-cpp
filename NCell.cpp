@@ -6,10 +6,9 @@
 #include <sstream>
 #include <algorithm>
 #include "Arrays.h"
-#include "NCell.h"
+#include "Cells.h"
 #include "BreakupModel.h"
 #include "AtmosphericDecayModels.h"
-#include "Cell.h"
 
 using namespace std;
 
@@ -65,7 +64,28 @@ NCell::NCell(string &filepath) {
     for (size_t i = 0; i < this->num_cells; i++) {
         this->cells->push_back(new Cell(filepath + "cell" + to_string(i) + "/"));
     }
-    // TODO: ADD PROBABILITY TABLES, UPDATE DRAG LIFETIMES
+    
+    // initialize/calculate probability tables
+    this->sat_coll_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    this->rb_coll_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    this->sat_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    this->rb_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    // ADD IN CALCULATION
+
+    // calculate atmospheric decay lifetimes
+}
+
+void NCell::calc_prob_tables(size_t indx) {
+    /*
+    calculates probability tables for explosion/collision debris generation in the system
+
+    Input(s):
+    indx : index of the cell to calculate probability tables for
+
+    Output(s): None
+
+    Note(s): assumes that the probability table objects have been properly instantiated
+    */
 }
 
 NCell::~NCell() {}
