@@ -35,8 +35,8 @@ double v_cdf(double v, double x, char typ);
 // cummulative distribution for post-collisions speed V
 double vprime_cdf(double V, double v0, double theta, double phi, double x, char typ);
 
-template <class UNRG>
-array<double, 3> rand_dir(UNRG &generator) {
+template <class URNG>
+array<double, 3> rand_dir(URNG &generator) {
     /*
     generates a random 3-d unit vector, uniformly
 

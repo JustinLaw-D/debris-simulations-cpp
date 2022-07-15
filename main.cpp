@@ -8,7 +8,7 @@
 #include <array>
 #include <vector>
 #include <iostream>
-#include <chrono>
+#include <random>
 using namespace std;
 
 void array_test() {
@@ -102,19 +102,20 @@ void cell_test() {
 
 void load_test() {
     string filepath = string("./test_save/");
-    NCell test = NCell(filepath);
+    default_random_engine generator = default_random_engine();
+    NCell<default_random_engine> test = NCell<default_random_engine>(filepath, 100, generator);
     cout << "Made it!" << endl;
 }
 
 void atmospheric_test() {
-    cout << drag_lifetime_default(330.0+5.0/2.0, 335.0-25.0/2.0, 1.0/40.0, 1) << endl;
+    cout << drag_lifetime_default(600.0+25.0/2.0, 600.0-25.0/2.0, 1.0/40.0, 1.0) << endl;
 }
 
 int main() {
     //array_test();
     //array1D_test();
     //cell_test();
-    //load_test();
-    atmospheric_test();
+    load_test();
+    //atmospheric_test();
     return 0;
 }

@@ -179,22 +179,8 @@ Cell::Cell(const string &filepath) {
         num_rb_types_temp >> this->num_rb_types; num_sat_types_temp >> this->num_sat_types;
         this->alt = stod(row[2]); this->dh = stod(row[3]); this->v = stod(row[4]);
         // calculate related parameters
-        this->logL_ave = new Array1D<double>(num_L); this->chi_ave = new Array1D<double>(num_chi);
-        for (size_t i = 0; i < num_L; i++) {
-            (this->logL_ave)->at(i) = ((this->logL_edges)->at(i) + (this->logL_edges)->at(i+1))/2;
-        } for (size_t i = 0; i < num_chi; i++) {
-            (this->chi_ave)->at(i) = ((this->chi_edges)->at(i) + (this->chi_edges)->at(i+1))/2;
-        }
-        this->vyr = v*60.0*60.0*24.0*365.25; this->v_orbit = sqrt(G*Me/((Re + alt)*1000));
+        this->vyr = (this->v)*60.0*60.0*24.0*365.25; this->v_orbit = sqrt(G*Me/((Re + this->alt)*1000.0));
         this->V = 4*M_PI*(Re + this->alt)*(Re + this->alt)*(this->dh);
-        this->trackable = new ArrayND<bool,2>(false, array<size_t,2>({this->num_L, this->num_chi}));
-        for (size_t i = 0; i < this->num_L; i++) {
-            if (pow(10, logL_ave->at(i)) >= 1.0/10.0) {
-                for (size_t j = 0; j < this->num_chi; j++) {
-                    (this->trackable)->at(array<size_t,2>({i,j})) = true;
-                }
-            }
-        }
     } else {
         throw invalid_argument("Cell params.csv file could not be opened");
     }
@@ -206,11 +192,20 @@ Cell::Cell(const string &filepath) {
     this->logL_edges = new Array1D<double>(filepath + string("logL.npy"));
     this->chi_edges = new Array1D<double>(filepath + string("chi.npy"));
     // calculate related values
+    this->logL_ave = new Array1D<double>(num_L); this->chi_ave = new Array1D<double>(num_chi);
     for (size_t i = 0; i < this->num_L; i++) { // setup average arrays
         this->logL_ave->at(i) = (this->logL_edges->at(i) + this->logL_edges->at(i+1))/2;
     } 
     for (size_t i = 0; i < this->num_chi; i++) {
         this->chi_ave->at(i) = (this->chi_edges->at(i) + this->chi_edges->at(i+1))/2;
+    }
+    this->trackable = new ArrayND<bool,2>(false, array<size_t,2>({this->num_L, this->num_chi}));
+    for (size_t i = 0; i < this->num_L; i++) {
+        if (pow(10, logL_ave->at(i)) >= 1.0/10.0) {
+            for (size_t j = 0; j < this->num_chi; j++) {
+                (this->trackable)->at(array<size_t,2>({i,j})) = true;
+            }
+        }
     }
 
     // load N_bin values

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-double density(const double alt, double t, const size_t mo0) {
+double density(const double alt, double t, const double mo0) {
     /*
     calculates atmospheric density using CIRA-2012 data
 
@@ -24,7 +24,7 @@ double density(const double alt, double t, const size_t mo0) {
     if (i < 0) {i = 0;}
 
     double logalt = log10(alt) + 3; // log(alt) in m
-    double mo_frac = t*12 + static_cast<double>(mo0); // fractional month index
+    double mo_frac = t*12 + mo0; // fractional month index
     double mo_int; // will contain the integer part of mo_frac
     double frac_part = modf(mo_frac, &mo_int); // split the two parts
     double mo = static_cast<double>(static_cast<size_t>(mo_int) % num_months) + frac_part; // calculate month (normalized by cycle)
@@ -53,7 +53,7 @@ double density(const double alt, double t, const size_t mo0) {
     return rho;
 }
 
-double dadt(const double alt, const double t, const size_t m0, const double a_over_m, const double CD) {
+double dadt(const double alt, const double t, const double m0, const double a_over_m, const double CD) {
     /*
     calculates the rate of change in the altitude of a circular orbit
 
@@ -72,7 +72,7 @@ double dadt(const double alt, const double t, const size_t m0, const double a_ov
 }
 
 double drag_lifetime(const double alt_i, const double alt_f, const double a_over_m, const double CD, double dt, 
-                     const size_t m0, const double mindt, const double maxdt, const double dtfactor, const double tmax) {
+                     const double m0, const double mindt, const double maxdt, const double dtfactor, const double tmax) {
     /*
     estimates the drag lifetime of an object at altitude alt_i to degrade to altitude alt_f
 
@@ -122,7 +122,7 @@ double drag_lifetime(const double alt_i, const double alt_f, const double a_over
     return time;
 }
 
-double drag_lifetime_default(const double alt_i, const double alt_f, const double a_over_m, const size_t m0) {
+double drag_lifetime_default(const double alt_i, const double alt_f, const double a_over_m, const double m0) {
     /*
     estimates the drag lifetime of an object at altitude alt_i to degrade to altitude alt_f, assuming that
     CD = 2.2, dt=100 secdons, m0=0, mindt=0, maxdt=100, dtfactor=1/100, tmax=1000

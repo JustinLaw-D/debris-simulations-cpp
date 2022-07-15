@@ -3,16 +3,20 @@
 #include <cstddef>
 #include <vector>
 #include <iostream>
+#include <random>
+#include <algorithm>
 #include "ObjectsEvents.h"
 #include "Arrays.h"
 #include "AtmosphericDecayModels.h"
 #include "BreakupModel.h"
+#include "Constants.h"
 #pragma once
 
 using namespace std;
 
 class Cell
 {
+    template <class URNG>
     friend class NCell;
 
     private:
@@ -89,7 +93,7 @@ class Cell
         ~Cell(); // destructor
 };
 
-// TODO: MAKE THIS A TEMPLATE CLASS FOR RANDOM GENERATOR
+template <class URNG>
 class NCell {
 
     private:
@@ -113,9 +117,10 @@ class NCell {
         ArrayND<double, 4> * rb_expl_prob_tables;
 
     public:
-        NCell(string &filepath); // constructor based on loading data from file
+        NCell(string &filepath, size_t num_dir, URNG &generator); // constructor based on loading data from file
         void save(string &filepath, string &name, double gap); // function for saving data
-        void calc_prob_tables(size_t indx); // calculates the probability tables
+        // calculates the probability tables
+        void calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, char ttyp, size_t num_dir, URNG &generator);
         void add_event(Event * event, double alt); // adds event to the system
         void dxdt(size_t time, bool upper, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt,
                   Array1D<double> &dRdt, ArrayND<double,2> &dNdt, double &dC_ldt, double &dC_nldt); // calculate rates of change
@@ -133,3 +138,170 @@ class NCell {
         void alt_to_index(double alt); // converts a given altitude to the index of the corresponding cell4
         ~NCell(); // destructor
 };
+
+template <class URNG>
+NCell<URNG>::NCell(string &filepath, size_t num_dir, URNG &generator) {
+    /*
+    loads NCell object from saved data
+
+    Input(s):
+    filepath : string containing relative or absolute path to saved data
+    num_dir : number of random directions to sample
+    generator : uniform random number generator used for direction randomization
+
+    Output(s):
+    NCell instance
+
+    Note(s): the intention is to create objects in Python, then pass them over to C++
+             via this saving/reading method
+    */
+    
+    ifstream param_file; // file containing basic NCell parameters
+    param_file.open(filepath + string("params.csv"), ios::in); // open relevant file
+    if (param_file.is_open()) {
+        vector<string> row; string line; string word; // extract the data
+        while(getline(param_file, line)) {
+            stringstream str(line);
+            while(getline(str, word, ',')) {
+                word.erase(remove(word.begin(), word.end(), '"'), word.end());
+                row.push_back(word);
+            }
+        }
+        istringstream num_L_temp(row[0]); // need to make these into string streams to convert
+        istringstream num_chi_temp(row[1]);
+        istringstream num_cell_temp(row[2]);
+        num_L_temp >> this->num_L; num_chi_temp >> this->num_chi; num_cell_temp >> this->num_cells;
+        this->update_period = stod(row[3]);
+    } else {
+        throw invalid_argument("NCell params.csv file could not be opened");
+    }
+    param_file.close();
+
+    // pull non-cell based arrays and data
+    this->t = load_vec<double>(filepath + string("t.npy"));
+    this->alts = new Array1D<double>(filepath + string("alts.npy"));
+    this->dhs = new Array1D<double>(filepath + string("dhs.npy"));
+    this->logL_edges = new Array1D<double>(filepath + string("logL.npy"));
+    this->chi_edges = new Array1D<double>(filepath + string("chi.npy"));
+    this->time = t->size() - 1; this->lupdate_time = this->time;
+    this->logL_ave = new Array1D<double>(this->num_L);
+    this->chi_ave = new Array1D<double>(this->num_chi);
+    for (size_t i = 0; i < this->num_L; i++) { // setup average arrays
+        this->logL_ave->at(i) = (this->logL_edges->at(i) + this->logL_edges->at(i+1))/2;
+    } 
+    for (size_t i = 0; i < this->num_chi; i++) {
+        this->chi_ave->at(i) = (this->chi_edges->at(i) + this->chi_edges->at(i+1))/2;
+    }
+
+    for (size_t i = 0; i < this->num_cells; i++) {
+        this->cells->push_back(new Cell(filepath + "cell" + to_string(i) + "/"));
+    }
+
+    // initialize/calculate probability tables
+    this->sat_coll_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    this->rb_coll_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    this->sat_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    this->rb_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    for (size_t i = 0; i < this->num_cells; i++) {
+        this->calc_prob_table(this->sat_coll_prob_tables, i, 'c', 's', num_dir, generator);
+        this->calc_prob_table(this->rb_coll_prob_tables, i, 'c', 'r', num_dir, generator);
+        this->calc_prob_table(this->sat_expl_prob_tables, i, 'e', 's', num_dir, generator);
+        this->calc_prob_table(this->rb_expl_prob_tables, i, 'e', 'r', num_dir, generator);
+    }
+
+    // calculate atmospheric decay lifetimes
+    this->update_lifetimes(t->back());
+}
+
+template <class URNG>
+void NCell<URNG>::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, char ttyp, size_t num_dir, URNG &generator) {
+    /*
+    calculates probability table for explosion/collision debris generation in the system
+
+    Input(s):
+    table : probability table to fill
+    indx : index of the cell to calculate probability table for
+    etyp : event type, either collision ('c') or explosion ('e')
+    ttyp : target object type, either satellite ('s') or rocket body ('r')
+    num_dir : number of random directions to sample
+    generator : uniform random number generator used for direction randomization
+
+    Output(s): None
+
+    Note(s): assumes that the probability table objects have been properly instantiated
+    */
+    double v0 = (*(this->cells))[indx]->v_orbit*1000.0; // orbital velocity in m/s
+    double r = (*(this->cells))[indx]->alt; // in km
+    double L_min = pow(10, this->logL_edges->at(0));
+    double L_max = pow(10, this->logL_edges->at(this->num_L));
+    double chi_min = this->chi_edges->at(0);
+    double chi_max = this->chi_edges->at(this->num_chi);
+    double * phi = new double[num_dir]; // random directions
+    double * theta = new double[num_dir];
+    uniform_real_distribution<double> dist = uniform_real_distribution<double>(0.0, 1.0); // standard uniform distribution
+    double P_temp_theta; // used to hold cummulative probability generated for theta
+    for (size_t i = 0; i < num_dir; i++) {
+        phi[i] = dist(generator)*2*M_PI;
+        P_temp_theta = dist(generator);
+        theta[i] = acos(1.0-2.0*P_temp_theta);
+    }
+    for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells
+        Cell * curr_cell = (*this->cells)[i];
+        double alt_min = curr_cell->alt - curr_cell->dh/2.0; // in km
+        double alt_max = curr_cell->alt + curr_cell->dh/2.0;
+        double v_min2 = G*Me*(2.0/((Re + r)*1000.0) - 1.0/((Re + alt_min)*1000.0)); // minimum velocity squared (m/s)
+        double v_max2 = G*Me*(2.0/((Re + r)*1000.0) - 1.0/((Re + alt_max)*1000.0)); // maximum velocity squared (m/s)
+        for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
+            double bin_bot_L = this->logL_edges->at(j);
+            double bin_top_L = this->logL_edges->at(j+1);
+            // probability of L being in this bin
+            double L_prob = L_cdf(pow(10, bin_top_L), L_min, L_max, etyp) - L_cdf(pow(10, bin_bot_L), L_min, L_max, etyp);
+            double L_ave = pow(10, this->logL_ave->at(j));
+            for (size_t k = 0; k < this->num_chi; k++) {
+                double bin_bot_chi = this->chi_edges->at(k);
+                double bin_top_chi = this->chi_edges->at(k+1);
+                // total probability of being in this bin
+                double curr_prob = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, ttyp) - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, ttyp));
+                double sum = 0.0; // total of all random directions sampled
+                for (size_t l = 0; l < num_dir; l++) { // sample random directions
+                    if ((v_min2 < 0) && (v_max2 < 0)) {sum += 0.0;}
+                    else if (v_min2 < 0) {sum += curr_prob*(vprime_cdf(sqrt(v_max2), v0, theta[l], phi[l], this->chi_ave->at(k), etyp));}
+                    else {sum += curr_prob*(vprime_cdf(sqrt(v_max2), theta[l], phi[l], v0, this->chi_ave->at(k), etyp) - vprime_cdf(sqrt(v_min2), v0, theta[l], phi[l], this->chi_ave->at(k), etyp));}
+                }
+                table->at(array<size_t, 4>({indx, i, j, k})) = sum/num_dir;
+            }
+        }
+    }
+}
+
+template <class URNG>
+void NCell<URNG>::update_lifetimes(double t) {
+    /*
+    updates decay lifetimes in all cells in the system
+
+    Input(s):
+    t : time since the start of the simulation (yr)
+
+    Output(s): None
+    */
+    Cell * curr_cell; double alt; double dh; double AM;
+    double m0 = t*12.0; // compute starting month
+    for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells
+        curr_cell = (*this->cells)[i]; alt = curr_cell->alt; dh = curr_cell->dh;
+        for (size_t j = 0; j < curr_cell->num_sat_types; j++) { // handle satellites
+            AM = curr_cell->AM_s->at(j);
+            curr_cell->tau_s->at(j) = drag_lifetime_default(alt + dh/2, alt - dh/2, AM, m0);
+        }
+        for (size_t j = 0; j < curr_cell->num_rb_types; j++) { // handle rockets
+            AM = curr_cell->AM_rb->at(j);
+            curr_cell->tau_rb->at(j) = drag_lifetime_default(alt + dh/2, alt - dh/2, AM, m0);
+        }
+        for (size_t j = 0; j < this->num_chi; j++) {// handle debris
+            AM = pow(10, this->chi_ave->at(j));
+            curr_cell->tau_N->at(j) = drag_lifetime_default(alt + dh/2, alt - dh/2, AM, m0);
+        }
+    }
+}
+
+template <class URNG>
+NCell<URNG>::~NCell() {}
