@@ -423,4 +423,11 @@ size_t NCell<URNG>::alt_to_index(double h) {
 }
 
 template <class URNG>
-NCell<URNG>::~NCell() {}
+NCell<URNG>::~NCell() {
+    // destructor
+    delete alts; delete dhs; delete t;
+    for (size_t i = 0; i < this->num_cells; i++) {delete this->cells[i];}
+    delete logL_edges; delete chi_edges; delete logL_ave; delete chi_ave;
+    delete sat_coll_prob_tables; delete sat_expl_prob_tables;
+    delete rb_coll_prob_tables; delete rb_expl_prob_tables;
+}
