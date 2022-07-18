@@ -5,6 +5,7 @@
 #include <iostream>
 #include <random>
 #include <algorithm>
+#include <experimental/filesystem>
 #include "ObjectsEvents.h"
 #include "Arrays.h"
 #include "AtmosphericDecayModels.h"
@@ -13,6 +14,7 @@
 #pragma once
 
 using namespace std;
+namespace fs = std::experimental::filesystem;
 
 class Cell
 {
@@ -81,8 +83,12 @@ class Cell
              vector<Event *> * event_list, size_t num_events, double alt, double dh, Array1D<double> * tau_N, double v,
              vector<double> * C_l, vector<double> * C_nl);
         Cell(const string &filepath); // load cell from file
+        void save(string &filepath, Array1D<bool> &filter, size_t filter_len); // function for saving data
+        void add_event(Event * event); // adds event to the cell
         void load_sat(const string &filepath, size_t i); // loads a single satellite type into the cell
+        void save_sat(const string &filepath, size_t i, Array1D<bool> &filter, size_t filter_len); // saves satellite type
         void load_rb(const string &filepath, size_t i); // loads a single rocket body into the cell
+        void save_rb(const string &filepath, size_t i, Array1D<bool> &filter, size_t filter_len); // saves rocket body type
         // calculating local rates of change
         void dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt, Array1D<double> &dRdt,
                        double &dC_ldt, double &dC_nldt, Array1D<double> &S_out, Array1D<double> &S_dout, Array1D<double> &D_out, 
@@ -105,7 +111,7 @@ class NCell {
         size_t time;
         size_t lupdate_time;
         vector<double> * t;
-        vector<Cell *> * cells;
+        Cell ** cells;
         size_t num_cells;
         Array1D<double> * logL_edges;
         Array1D<double> * logL_ave;
@@ -121,7 +127,7 @@ class NCell {
         void save(string &filepath, string &name, double gap); // function for saving data
         // calculates the probability tables
         void calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, char ttyp, size_t num_dir, URNG &generator);
-        void add_event(Event * event, double alt); // adds event to the system
+        bool add_event(Event * event, double alt); // adds event to the system
         void dxdt(size_t time, bool upper, Array1D<double> &dSdt, Array1D<double> &dS_ddt, Array1D<double> &dDdt,
                   Array1D<double> &dRdt, ArrayND<double,2> &dNdt, double &dC_ldt, double &dC_nldt); // calculate rates of change
         void run_sim_euler(double T, double dt, bool upper); // run simulation with euler method
@@ -135,7 +141,7 @@ class NCell {
         void parse_coll(vector<Coll> &coll_list, ArrayND<double,3> &dN, size_t index); // handles list of collision objects
         void parse_expl(vector<Expl> &expl_list, ArrayND<double,3> &dN, size_t index); // handles list of explosion objects
         void update_lifetimes(double t); // updates all the atmospheric lifetimes in the system
-        void alt_to_index(double alt); // converts a given altitude to the index of the corresponding cell4
+        size_t alt_to_index(double alt); // converts a given altitude to the index of the corresponding cell
         ~NCell(); // destructor
 };
 
@@ -193,8 +199,9 @@ NCell<URNG>::NCell(string &filepath, size_t num_dir, URNG &generator) {
         this->chi_ave->at(i) = (this->chi_edges->at(i) + this->chi_edges->at(i+1))/2;
     }
 
+    this->cells = new Cell *[this->num_cells];
     for (size_t i = 0; i < this->num_cells; i++) {
-        this->cells->push_back(new Cell(filepath + "cell" + to_string(i) + "/"));
+        this->cells[i] = new Cell(filepath + "cell" + to_string(i) + "/");
     }
 
     // initialize/calculate probability tables
@@ -214,6 +221,74 @@ NCell<URNG>::NCell(string &filepath, size_t num_dir, URNG &generator) {
 }
 
 template <class URNG>
+void NCell<URNG>::save(string &filepath, string &name, double gap) {
+    /*
+    saves current NCell object
+
+    Input(s):
+    filepath : path to location to save the object
+    name : name of the object
+    gap : smallest gap in time between data points saved to accept (yr)
+
+    Output(s): None
+    */
+    
+    // create directory
+    string true_path = filepath + name + string("/"); string file_path;
+    bool exists;
+    try {
+        exists = fs::create_directory(fs::path(true_path)); // make the folder representing the object
+    } catch (const std::exception& e) {
+        cout << "From NCell save " << e.what();
+        return;
+    }
+    if (!exists) {
+        cout << "NCell save failed : directory already exists" << endl;
+        return;
+    }
+
+    // write parameters
+    ofstream param_file; // file containing basic NCell parameters
+    param_file.open(true_path + string("params.csv"), ios::out); // open relevant file
+    if (param_file.is_open()) {
+        param_file << "\"" << to_string(this->num_L) << "\"" << ","; // write values
+        param_file << "\"" << to_string(this->num_chi) << "\"" << ",";
+        param_file << "\"" << to_string(this->num_cells) << "\"" << ",";
+        param_file << "\"" << to_string(this->update_period) << "\"";
+    } else {
+        throw invalid_argument("NCell params.csv file could not be opened");
+    }
+    param_file.close();
+
+    // build the filter
+    Array1D<bool> filter = Array1D<bool>(this->t->size());
+    size_t filter_len = 0; // number of values that survive the filter
+    if (filter.get_tot_size() > 0) {
+        double prev_t = this->t->at(0);
+        filter.at(0) = true;
+        filter_len++;
+        for (size_t i = 1; i < filter.get_tot_size(); i++) {
+            if (this->t->at(i) - prev_t >= gap) {
+                prev_t = this->t->at(i); filter.at(i) = true; filter_len++;
+            } else {filter.at(i) = false;}
+        }
+    }
+
+    // write easy arrays
+    file_path = true_path + string("t.npy"); save_vec(file_path, this->t, filter, filter_len);
+    file_path = true_path + string("alts.npy"); this->alts->save(file_path);
+    file_path = true_path + string("dhs.npy"); this->dhs->save(file_path);
+    file_path = true_path + string("logL.npy"); this->logL_edges->save(file_path);
+    file_path = true_path + string("chi.npy"); this->chi_edges->save(file_path);
+
+    for (size_t i = 0; i < this->num_cells; i++) {
+        string cell_path = true_path + string("cell") + to_string(i) + "/";
+        this->cells[i]->save(cell_path, filter, filter_len);
+    }
+
+}
+
+template <class URNG>
 void NCell<URNG>::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, char ttyp, size_t num_dir, URNG &generator) {
     /*
     calculates probability table for explosion/collision debris generation in the system
@@ -230,8 +305,8 @@ void NCell<URNG>::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char 
 
     Note(s): assumes that the probability table objects have been properly instantiated
     */
-    double v0 = (*(this->cells))[indx]->v_orbit*1000.0; // orbital velocity in m/s
-    double r = (*(this->cells))[indx]->alt; // in km
+    double v0 = (this->cells)[indx]->v_orbit*1000.0; // orbital velocity in m/s
+    double r = (this->cells)[indx]->alt; // in km
     double L_min = pow(10, this->logL_edges->at(0));
     double L_max = pow(10, this->logL_edges->at(this->num_L));
     double chi_min = this->chi_edges->at(0);
@@ -246,7 +321,7 @@ void NCell<URNG>::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char 
         theta[i] = acos(1.0-2.0*P_temp_theta);
     }
     for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells
-        Cell * curr_cell = (*this->cells)[i];
+        Cell * curr_cell = (this->cells)[i];
         double alt_min = curr_cell->alt - curr_cell->dh/2.0; // in km
         double alt_max = curr_cell->alt + curr_cell->dh/2.0;
         double v_min2 = G*Me*(2.0/((Re + r)*1000.0) - 1.0/((Re + alt_min)*1000.0)); // minimum velocity squared (m/s)
@@ -275,6 +350,29 @@ void NCell<URNG>::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char 
 }
 
 template <class URNG>
+bool NCell<URNG>::add_event(Event * event, double alt) {
+    /* 
+    adds event to the system at the given altitude
+
+    Input(s):
+    event : pointer to event to add
+    alt : altitude to add the event at (km)
+
+    Output(s):
+    in : true if the given altitude is in the system, false otherwise
+
+    Note: if false is returned, event is not added to the system
+    */
+    size_t indx = this->alt_to_index(alt); // get index
+    if (indx == this->num_cells) {
+        return false;
+    } else {
+        this->cells[indx]->add_event(event);
+        return true;
+    }
+}
+
+template <class URNG>
 void NCell<URNG>::update_lifetimes(double t) {
     /*
     updates decay lifetimes in all cells in the system
@@ -287,7 +385,7 @@ void NCell<URNG>::update_lifetimes(double t) {
     Cell * curr_cell; double alt; double dh; double AM;
     double m0 = t*12.0; // compute starting month
     for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells
-        curr_cell = (*this->cells)[i]; alt = curr_cell->alt; dh = curr_cell->dh;
+        curr_cell = (this->cells)[i]; alt = curr_cell->alt; dh = curr_cell->dh;
         for (size_t j = 0; j < curr_cell->num_sat_types; j++) { // handle satellites
             AM = curr_cell->AM_s->at(j);
             curr_cell->tau_s->at(j) = drag_lifetime_default(alt + dh/2, alt - dh/2, AM, m0);
@@ -301,6 +399,27 @@ void NCell<URNG>::update_lifetimes(double t) {
             curr_cell->tau_N->at(j) = drag_lifetime_default(alt + dh/2, alt - dh/2, AM, m0);
         }
     }
+}
+
+template <class URNG>
+size_t NCell<URNG>::alt_to_index(double h) {
+    /*
+    converts altitude to index of corresponding cell
+
+    Input(s):
+    h : altitude (km)
+
+    Output(s):
+    indx : cell index
+
+    Note(s): returns this->num_cells if the alt isn't in any cell
+    */
+    double alt; double dh;
+    for (size_t i = 0; i < this->num_cells; i++) {
+        alt = this->alts->at(i); dh = this->dh->at(i);
+        if ((alt - dh/2 <= h) && (alt + dh/2 >= h)) {return i;}
+    }
+    return this->num_cells;
 }
 
 template <class URNG>

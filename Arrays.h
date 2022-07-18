@@ -39,6 +39,7 @@ class ArrayND
         void copy_div(const T num);
         void copy_pow(const T num);
         void print(); // displays the array
+        bool save(string &filepath); // saves the array as a .npy file
         ~ArrayND(); // destructor
 };
 
@@ -54,6 +55,8 @@ class Array1D : public ArrayND<T,1> {
         Array1D(const T val, const size_t len); // creates array with copies of given value
         Array1D(const string &filepath); // load from .npy file
         inline T & at(const size_t loc); // get reference to a specific element
+        bool save(string &filepath); // saves the array as a .npy file
+        bool save(string &filepath, Array1D<bool> &filter, size_t len); // saves the array as a .npy file, filtering values
 };
 
 template <typename T, size_t N>
@@ -116,6 +119,8 @@ ArrayND<T,N>::ArrayND(const string &filepath) {
     filepath : string containing relative or absolute path to saved data
 
     Outpus(s): ArrayND instance
+
+    Note: this may fail on saved 1D numpy arrays.
     */
 
     ifstream data_file; data_file.open(filepath, ios::in | ios::binary);
@@ -363,6 +368,69 @@ void ArrayND<T, N>::print_dim(array<size_t, N> partial_loc, size_t num_set, size
 }
 
 template <typename T, size_t N>
+bool ArrayND<T, N>::save(string &filepath) {
+    /*
+    saves an ND array in .npy format
+
+    Input(s):
+    filepath : filepath to save to, should end in .npy
+
+    Output(s):
+    suc : true if the array was successfully saved
+
+    Note(s) : fails on any type other than double or bool
+    */
+    // build header string, using typeID to catch which type string to use
+
+    char typ_str[3]; // string representing the data type
+    if (typeid(T) == typeid(double)) { // check through supported data types
+        typ_str[0] = '<'; typ_str[1] = 'f'; typ_str[2] = '8';
+    } else if (typeid(T) == typeid(bool)) {
+        typ_str[0] = '|'; typ_str[1] = 'b'; typ_str[2] = '1';
+    } else { // stop if the data type isn't supported yet
+        return false;
+    }
+
+    ofstream data_file; data_file.open(filepath, ios::out | ios::binary);
+    if (data_file.is_open()) {
+        char waste[8] = {'~','N','U','M','P','Y','x','x'}; // opening bytes of the file that are essentially useless
+        waste[0] = 147; waste[6] = 1; waste[7] = 0;
+        unsigned short header_len; // for holding information on the length of the header
+        string header = "{'descr': '"; // string to hold the header as we build it
+        for (size_t i = 0; i < 3; i++) {header.push_back(typ_str[i]);}
+        header.append("', 'fortran_order': False, 'shape': ");
+        if ((N == 0) || this->is_zero()) { // different cases for different sizes
+            header.insert(header.end(), {'(',')'});
+        } else if (N == 1) {
+            header.push_back('('); header.append(to_string(this->tot_size)); header.append(",)");
+        } else {
+            header.push_back('(');
+            for (size_t i = 0; i < N - 1; i++) {
+                header.append(to_string(this->dim[i])); header.append(", ");
+            } header.append(to_string(this->dim[N-1]));
+            header.push_back(')');
+        }
+        header.append(", }");
+        unsigned short non_padded_len = static_cast<unsigned short>(header.size());
+        unsigned short tot_len = 64; // must be the smallest possible multiple of this
+        while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
+        header_len = tot_len - 10;
+        // pad with spaces for alignment
+        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        header.push_back('\n');
+        // write the header to the file
+        data_file.write(waste, 8); data_file.write((char *)&header_len, 2);
+        data_file.write(header.data(), header_len);
+        // write the data to the file
+        data_file.write((char *)this->arr, this->tot_size*sizeof(T));
+    } else {
+        throw invalid_argument(".npy file could not be opened");
+    }
+    data_file.close();
+    return true;
+}
+
+template <typename T, size_t N>
 ArrayND<T, N>::~ArrayND() {
     // destructor for ND array
     delete [] this->arr;
@@ -541,4 +609,247 @@ vector<T> * load_vec(const string &filepath) {
         throw invalid_argument(".npy file could not be opened");
     }
     return to_return;
+}
+
+template <typename T>
+bool Array1D<T>::save(string &filepath) {
+    /*
+    saves a 1D array in .npy format
+
+    Input(s):
+    filepath : filepath to save to, should end in .npy
+
+    Output(s):
+    suc : true if the array was successfully saved
+
+    Note(s) : fails on any type other than double or bool
+    */
+    // build header string, using typeID to catch which type string to use
+
+    char typ_str[3]; // string representing the data type
+    if (typeid(T) == typeid(double)) { // check through supported data types
+        typ_str[0] = '<'; typ_str[1] = 'f'; typ_str[2] = '8';
+    } else if (typeid(T) == typeid(bool)) {
+        typ_str[0] = '|'; typ_str[1] = 'b'; typ_str[2] = '1';
+    } else { // stop if the data type isn't supported yet
+        return false;
+    }
+
+    ofstream data_file; data_file.open(filepath, ios::out | ios::binary);
+    if (data_file.is_open()) {
+        char waste[8] = {'~','N','U','M','P','Y','x','x'}; // opening bytes of the file that are essentially useless
+        waste[0] = 147; waste[6] = 1; waste[7] = 0;
+        unsigned short header_len; // for holding information on the length of the header
+        string header = "{'descr': '"; // string to hold the header as we build it
+        for (size_t i = 0; i < 3; i++) {header.push_back(typ_str[i]);}
+        header.append("', 'fortran_order': False, 'shape': ");
+        if (this->is_zero()) { // different cases for different sizes
+            header.insert(header.end(), {'(',')'});
+        } else {
+            header.push_back('('); header.append(to_string(this->tot_size)); header.append(",)");
+        }
+        header.append(", }");
+        unsigned short non_padded_len = static_cast<unsigned short>(header.size());
+        unsigned short tot_len = 64; // must be the smallest possible multiple of this
+        while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
+        header_len = tot_len - 10;
+        // pad with spaces for alignment
+        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        header.push_back('\n');
+        // write the header to the file
+        data_file.write(waste, 8); data_file.write((char *)&header_len, 2);
+        data_file.write(header.data(), header_len);
+        // write the data to the file
+        data_file.write((char *)this->arr, this->tot_size*sizeof(T));
+    } else {
+        throw invalid_argument(".npy file could not be opened");
+    }
+    data_file.close();
+    return true;
+}
+
+template <typename T>
+bool Array1D<T>::save(string &filepath, Array1D<bool> &filter, size_t len) {
+    /*
+    saves an ND array in .npy format
+
+    Input(s):
+    filepath : filepath to save to, should end in .npy
+    filter : array indicating which values to save or not
+    len : total number of values that will be saved
+
+    Output(s):
+    suc : true if the array was successfully saved
+
+    Note(s) : fails on any type other than double or bool, and if filter is
+              a different length than the array
+    */
+    // build header string, using typeID to catch which type string to use
+
+    char typ_str[3]; // string representing the data type
+    if (typeid(T) == typeid(double)) { // check through supported data types
+        typ_str[0] = '<'; typ_str[1] = 'f'; typ_str[2] = '8';
+    } else if (typeid(T) == typeid(bool)) {
+        typ_str[0] = '|'; typ_str[1] = 'b'; typ_str[2] = '1';
+    } else { // stop if the data type isn't supported yet
+        return false;
+    }
+    if (filter.get_tot_size() != this->tot_size) {return false;}
+
+    ofstream data_file; data_file.open(filepath, ios::out | ios::binary);
+    if (data_file.is_open()) {
+        char waste[8] = {'~','N','U','M','P','Y','x','x'}; // opening bytes of the file that are essentially useless
+        waste[0] = 147; waste[6] = 1; waste[7] = 0;
+        unsigned short header_len; // for holding information on the length of the header
+        string header = "{'descr': '"; // string to hold the header as we build it
+        for (size_t i = 0; i < 3; i++) {header.push_back(typ_str[i]);}
+        header.append("', 'fortran_order': False, 'shape': ");
+        if (this->is_zero()) { // different cases for different sizes
+            header.insert(header.end(), {'(',')'});
+        } else {
+            header.push_back('('); header.append(to_string(len)); header.append(",)");
+        }
+        header.append(", }");
+        unsigned short non_padded_len = static_cast<unsigned short>(header.size());
+        unsigned short tot_len = 64; // must be the smallest possible multiple of this
+        while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
+        header_len = tot_len - 10;
+        // pad with spaces for alignment
+        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        header.push_back('\n');
+        // write the header to the file
+        data_file.write(waste, 8); data_file.write((char *)&header_len, 2);
+        data_file.write(header.data(), header_len);
+        // write the data to the file
+        for (size_t i = 0; i < this->tot_size; i++) {
+            if (filter.at(i)) {data_file.write((char *)&(this->arr[i]), sizeof(T));}
+        }
+        data_file.write((char *)this->arr, this->tot_size*sizeof(T));
+    } else {
+        throw invalid_argument(".npy file could not be opened");
+    }
+    data_file.close();
+    return true;
+}
+
+template <typename T>
+bool save_vec(string &filepath, vector<T> * vec) {
+    /*
+    saves a vector array in .npy format
+
+    Input(s):
+    filepath : filepath to save to, should end in .npy
+    vec : vector to save
+
+    Output(s):
+    suc : true if the vector was successfully saved
+
+    Note(s) : fails on any type other than double or bool
+    */
+    // build header string, using typeID to catch which type string to use
+
+    char typ_str[3]; // string representing the data type
+    if (typeid(T) == typeid(double)) { // check through supported data types
+        typ_str[0] = '<'; typ_str[1] = 'f'; typ_str[2] = '8';
+    } else if (typeid(T) == typeid(bool)) {
+        typ_str[0] = '|'; typ_str[1] = 'b'; typ_str[2] = '1';
+    } else { // stop if the data type isn't supported yet
+        return false;
+    }
+
+    ofstream data_file; data_file.open(filepath, ios::out | ios::binary);
+    if (data_file.is_open()) {
+        char waste[8] = {'~','N','U','M','P','Y','x','x'}; // opening bytes of the file that are essentially useless
+        waste[0] = 147; waste[6] = 1; waste[7] = 0;
+        unsigned short header_len; // for holding information on the length of the header
+        string header = "{'descr': '"; // string to hold the header as we build it
+        for (size_t i = 0; i < 3; i++) {header.push_back(typ_str[i]);}
+        header.append("', 'fortran_order': False, 'shape': ");
+        if (vec->size() == 0) { // different cases for different sizes
+            header.insert(header.end(), {'(',')'});
+        } else {
+            header.push_back('('); header.append(to_string(vec->size())); header.append(",)");
+        }
+        header.append(", }");
+        unsigned short non_padded_len = static_cast<unsigned short>(header.size());
+        unsigned short tot_len = 64; // must be the smallest possible multiple of this
+        while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
+        header_len = tot_len - 10;
+        // pad with spaces for alignment
+        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        header.push_back('\n');
+        // write the header to the file
+        data_file.write(waste, 8); data_file.write((char *)&header_len, 2);
+        data_file.write(header.data(), header_len);
+        // write the data to the file
+        data_file.write((char *)vec->data(), vec->size()*sizeof(T));
+    } else {
+        throw invalid_argument(".npy file could not be opened");
+    }
+    data_file.close();
+    return true;
+}
+
+template <typename T>
+bool save_vec(string &filepath, vector<T> * vec, Array1D<bool> &filter, size_t len) {
+    /*
+    saves an ND array in .npy format
+
+    Input(s):
+    filepath : filepath to save to, should end in .npy
+    vec : vector to save
+    filter : array indicating which values to save or not
+    len : total number of values that will be saved
+
+    Output(s):
+    suc : true if the array was successfully saved
+
+    Note(s) : fails on any type other than double or bool, and if filter is
+              a different length than the vector
+    */
+    // build header string, using typeID to catch which type string to use
+
+    char typ_str[3]; // string representing the data type
+    if (typeid(T) == typeid(double)) { // check through supported data types
+        typ_str[0] = '<'; typ_str[1] = 'f'; typ_str[2] = '8';
+    } else if (typeid(T) == typeid(bool)) {
+        typ_str[0] = '|'; typ_str[1] = 'b'; typ_str[2] = '1';
+    } else { // stop if the data type isn't supported yet
+        return false;
+    }
+    if (filter.get_tot_size() != vec->size()) {return false;}
+
+    ofstream data_file; data_file.open(filepath, ios::out | ios::binary);
+    if (data_file.is_open()) {
+        char waste[8] = {'~','N','U','M','P','Y','x','x'}; // opening bytes of the file that are essentially useless
+        waste[0] = 147; waste[6] = 1; waste[7] = 0;
+        unsigned short header_len; // for holding information on the length of the header
+        string header = "{'descr': '"; // string to hold the header as we build it
+        for (size_t i = 0; i < 3; i++) {header.push_back(typ_str[i]);}
+        header.append("', 'fortran_order': False, 'shape': ");
+        if (vec->size() == 0) { // different cases for different sizes
+            header.insert(header.end(), {'(',')'});
+        } else {
+            header.push_back('('); header.append(to_string(len)); header.append(",)");
+        }
+        header.append(", }");
+        unsigned short non_padded_len = static_cast<unsigned short>(header.size());
+        unsigned short tot_len = 64; // must be the smallest possible multiple of this
+        while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
+        header_len = tot_len - 10;
+        // pad with spaces for alignment
+        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        header.push_back('\n');
+        // write the header to the file
+        data_file.write(waste, 8); data_file.write((char *)&header_len, 2);
+        data_file.write(header.data(), header_len);
+        // write the data to the file
+        for (size_t i = 0; i < vec->size(); i++) {
+            if (filter.at(i)) {data_file.write((char *)&vec->at(i), sizeof(T));}
+        }
+    } else {
+        throw invalid_argument(".npy file could not be opened");
+    }
+    data_file.close();
+    return true;
 }

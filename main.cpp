@@ -16,13 +16,15 @@ void array_test() {
     ArrayND<double, 3> arr = ArrayND<double, 3>(0.0, dim);
     arr.print();
     cout << endl;
-    ArrayND<int, 2> * arr2 = new ArrayND<int, 2>(0.0, array<size_t,2>({3,2}));
+    ArrayND<double, 2> * arr2 = new ArrayND<double, 2>(0.0, array<size_t,2>({3,2}));
     arr2->print();
     cout << endl;
-    arr2->at(array<size_t,2>({1,0})) = 10;
-    arr2->copy_sum(571);
+    arr2->at(array<size_t,2>({1,0})) = 10.0;
+    arr2->copy_sum(571.0);
     arr2->print();
     cout << endl;
+    string filepath = "./test.npy";
+    arr2->save(filepath);
     ArrayND<bool, 2> arr3 = ArrayND<bool, 2>(true, array<size_t, 2>({6,2}));
     arr3.print();
     cout << endl;
@@ -103,7 +105,11 @@ void cell_test() {
 void load_test() {
     string filepath = string("./test_save/");
     default_random_engine generator = default_random_engine();
-    NCell<default_random_engine> test = NCell<default_random_engine>(filepath, 100, generator);
+    cout << "Hi" << endl;
+    NCell<default_random_engine> test = NCell<default_random_engine>(filepath, 1000, generator);
+    string temp[2] = {string("./"), string("test_resave")};
+    cout << "Here" << endl;
+    test.save(temp[0], temp[1], 0.0);
     cout << "Made it!" << endl;
 }
 

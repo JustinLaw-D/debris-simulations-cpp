@@ -10,8 +10,10 @@
 #include <math.h>
 #include <iostream>
 #include <algorithm>
+#include <experimental/filesystem>
 
 using namespace std;
+namespace fs = std::experimental::filesystem;
 
 Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i, size_t num_sat_types,
            size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
@@ -113,7 +115,7 @@ Cell::Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i
     (this->R)->push_back(R_i);
 
     // setup basic parameters
-    this->N_bins = new vector<ArrayND<double, 2> *>(); (this->N_bins)->push_back(N_i);
+    this->N_bins = new vector<ArrayND<double, 2> *>(); this->N_bins->push_back(N_i);
     
     this->logL_edges = logL_edges; this->num_L = num_L; this->chi_edges = chi_edges; this->num_chi = num_chi;
     this->logL_ave = new Array1D<double>(0.0, num_L); this->chi_ave = new Array1D<double>(0.0, num_chi);
@@ -290,6 +292,86 @@ Cell::Cell(const string &filepath) {
     this->update_cat_N();
 }
 
+void Cell::save(string &filepath, Array1D<bool> &filter, size_t filter_len) {
+    /*
+    saves current Cell object
+
+    Input(s):
+    filepath : path to location to save the object
+    filter : filter of which datapoints to keep
+    filter_len : number of values kept by the filter
+
+    Output(s): None
+    */
+    
+    // create directory
+    bool exists; string file_path;
+    try {
+        exists = fs::create_directory(fs::path(filepath)); // make the folder representing the object
+    } catch (const std::exception& e) {
+        cout << "From Cell save " << e.what();
+        return;
+    }
+    if (!exists) {
+        cout << "Cell save failed : directory already exists" << endl;
+        return;
+    }
+
+    // write parameters
+    ofstream param_file; // file containing basic Cell parameters
+    param_file.open(filepath + string("params.csv"), ios::out); // open relevant file
+    if (param_file.is_open()) {
+        param_file << "\"" << to_string(this->num_sat_types) << "\"" << ","; // write values
+        param_file << "\"" << to_string(this->num_rb_types) << "\"" << ",";
+        param_file << "\"" << to_string(this->alt) << "\"" << ",";
+        param_file << "\"" << to_string(this->dh) << "\"" << ",";
+        param_file << "\"" << to_string(this->v) << "\"" << ",";
+        param_file << "\"" << to_string(this->num_L) << "\"" << ",";
+        param_file << "\"" << to_string(this->num_chi) << "\"";
+    } else {
+        throw invalid_argument("Cell params.csv file could not be opened");
+    }
+    param_file.close();
+
+    // write easy arrays
+    file_path = filepath + "dataCl.npy"; save_vec(file_path, this->C_l, filter, filter_len);
+    file_path = filepath + "dataCnl.npy"; save_vec(file_path, this->C_nl, filter, filter_len);
+    file_path = filepath + "logL.npy"; this->logL_edges->save(file_path);
+    file_path = filepath + "chi.npy"; this->chi_edges->save(file_path);
+
+    // write N_bins values
+    string bin_path = filepath + "N_bins/";
+    try {
+        exists = fs::create_directory(fs::path(bin_path)); // make the folder representing the list
+    } catch (const std::exception& e) {
+        cout << "From N_bins save " << e.what();
+        return;
+    }
+    if (!exists) {
+        cout << "N_bins save failed : directory already exists" << endl;
+        return;
+    }
+    size_t index = 0;
+    for (size_t i = 0; i < this->N_bins->size(); i++) {
+        if (filter.at(i)) {
+            file_path = bin_path + to_string(index); this->N_bins->at(i)->save(file_path);
+            index++;
+        }
+    }
+
+    // write satellites and rockets
+    for (size_t i = 0; i < this->num_sat_types; i++) {
+        this->save_sat(filepath + string("Satellite") + to_string(i) + string("/"), i, filter, filter_len);
+    } for (size_t i = 0; i < this->num_rb_types; i++) {
+        this->save_rb(filepath + string("RocketBody") + to_string(i) + string("/"), i, filter, filter_len);
+    }
+}
+
+void Cell::add_event(Event * event) {
+    // adds the given event to the cell
+    this->event_list->push_back(event); this->num_events++;
+}
+
 void Cell::load_sat(const string &filepath, size_t i) {
     /*
     loads a saved satellite object into the cell
@@ -342,6 +424,71 @@ void Cell::load_sat(const string &filepath, size_t i) {
     }
 }
 
+void Cell::save_sat(const string &filepath, size_t i, Array1D<bool> &filter, size_t filter_len) {
+    /*
+    saves a single satellite object
+
+    Input(s):
+    filepath : path to location to save the object
+    i : indicates that this is the "ith" satellite type in the cell
+    filter : filter of which datapoints to keep
+    filter_len : number of values kept by the filter
+
+    Output(s): None
+    */
+    // create directory
+    bool exists; string file_path;
+    try {
+        exists = fs::create_directory(fs::path(filepath)); // make the folder representing the object
+    } catch (const std::exception& e) {
+        cout << "From sat save " << e.what();
+        return;
+    }
+    if (!exists) {
+        cout << "sat save failed : directory already exists" << endl;
+        return;
+    }
+
+    // write parameters
+    ofstream param_file; // file containing basic Cell parameters
+    param_file.open(filepath + string("params.csv"), ios::out); // open relevant file
+    if (param_file.is_open()) {
+        param_file << "\"" << to_string(this->m_s->at(i)) << "\"" << ","; // write values
+        param_file << "\"" << to_string(this->sigma_s->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->lam_s->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->del_t->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->fail_t->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->tau_do->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->target_alt->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->up_time->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->alphaS->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->alphaD->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->alphaN->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->alphaR->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->P->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->AM_s->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->C_s->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->expl_rate_L->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->expl_rate_D->at(i)) << "\"";
+    } else {
+        throw invalid_argument("Cell params.csv file could not be opened");
+    }
+    param_file.close();
+
+    // write data arrays
+    vector<double> S_loc = vector<double>(this->S->size()); // copy arrays for this satellite type
+    vector<double> SD_loc = vector<double>(this->D->size());
+    vector<double> D_loc = vector<double>(this->S->size());
+    for (size_t j = 0; j < this->S->size(); j++) {
+        S_loc[j] = this->S->at(j)->at(i);
+        SD_loc[j] = this->S_d->at(j)->at(i);
+        D_loc[j] = this->D->at(j)->at(i);
+    }
+    file_path = filepath + "dataS.npy"; save_vec(file_path, &S_loc, filter, filter_len);
+    file_path = filepath + "dataSd.npy"; save_vec(file_path, &SD_loc, filter, filter_len);
+    file_path = filepath + "dataD.npy"; save_vec(file_path, &D_loc, filter, filter_len);
+}
+
 void Cell::load_rb(const string &filepath, size_t i) {
     /*
     loads a saved rocket body object into the cell
@@ -382,6 +529,54 @@ void Cell::load_rb(const string &filepath, size_t i) {
     for (size_t j = 0; j < tot_size; j++) {
         this->R->at(j)->at(i) = R_temp.at(j);
     }
+}
+
+void Cell::save_rb(const string &filepath, size_t i, Array1D<bool> &filter, size_t filter_len) {
+    /*
+    saves a single rocket body object
+
+    Input(s):
+    filepath : path to location to save the object
+    i : indicates that this is the "ith" rocket type in the cell
+    filter : filter of which datapoints to keep
+    filter_len : number of values kept by the filter
+
+    Output(s): None
+    */
+    // create directory
+    bool exists; string file_path;
+    try {
+        exists = fs::create_directory(fs::path(filepath)); // make the folder representing the object
+    } catch (const std::exception& e) {
+        cout << "From rb save " << e.what();
+        return;
+    }
+    if (!exists) {
+        cout << "rb save failed : directory already exists" << endl;
+        return;
+    }
+
+    // write parameters
+    ofstream param_file; // file containing basic Cell parameters
+    param_file.open(filepath + string("params.csv"), ios::out); // open relevant file
+    if (param_file.is_open()) {
+        param_file << "\"" << to_string(this->m_rb->at(i)) << "\"" << ","; // write values
+        param_file << "\"" << to_string(this->sigma_rb->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->lam_rb->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->AM_rb->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->C_rb->at(i)) << "\"" << ",";
+        param_file << "\"" << to_string(this->expl_rate_R->at(i)) << "\"";
+    } else {
+        throw invalid_argument("Cell params.csv file could not be opened");
+    }
+    param_file.close();
+
+    // write data arrays
+    vector<double> R_loc = vector<double>(this->R->size()); // copy arrays for this rocket type
+    for (size_t j = 0; j < this->R->size(); j++) {
+        R_loc[j] = this->R->at(j)->at(i);
+    }
+    file_path = filepath + "data.npy"; save_vec(file_path, &R_loc, filter, filter_len);
 }
 
 void Cell::update_cat_N() {
@@ -659,15 +854,19 @@ Cell::~Cell() {
     // Note : the Cell is not assumed to own the logL_edges and chi_edges arrays, and hence
     //        will not free them
     delete this->trackable; delete this->ascending; delete this->cat_rb_N;
-    delete this->cat_sat_N; delete this->tau_N; delete this->event_list;
-    delete this->logL_ave; delete this->chi_ave; delete this->sigma_s_km;
-    delete this->N_bins; delete this->R; delete this->expl_rate_R;
-    delete this->C_rb; delete this->tau_rb; delete this->AM_rb; delete this->lam_rb;
-    delete this->sigma_rb; delete this->m_rb; delete this->D; delete this->S_d;
-    delete this->S; delete this->expl_rate_D; delete this->expl_rate_L;
-    delete this->C_s; delete this->tau_s; delete this->AM_s; delete this->P;
-    delete this->alphaR; delete this->alphaN; delete this->alphaD; delete this->alphaS;
-    delete this->up_time; delete this->target_alt; delete this->tau_do; delete this->del_t;
+    delete this->cat_sat_N; delete this->tau_N; delete this->logL_ave; delete this->chi_ave; 
+    delete this->sigma_s_km; delete this->expl_rate_R; delete this->C_rb; delete this->tau_rb; 
+    delete this->AM_rb; delete this->lam_rb; delete this->sigma_rb; delete this->m_rb; 
+    delete this->expl_rate_D; delete this->expl_rate_L; delete this->C_s; delete this->tau_s; 
+    delete this->AM_s; delete this->P; delete this->alphaR; delete this->alphaN; delete this->alphaD; 
+    delete this->alphaS; delete this->up_time; delete this->target_alt; delete this->tau_do; delete this->del_t;
     delete this->fail_t; delete this->lam_s; delete this->sigma_s; delete this->m_s; delete this->sigma_rb_km;
     delete this->C_l; delete this->C_nl;
+
+    for (size_t i = 0; i < this->S->size(); i++) {
+        delete (*this->S)[i]; delete (*this->S_d)[i]; delete (*this->D)[i]; delete (*this->N_bins)[i];
+    }
+    for (size_t i = 0; i < this->R->size(); i++) {delete (*this->R)[i];}
+    for (size_t i = 0; i < this->num_events; i++) {delete (*this->event_list)[i];}
+    delete this->S; delete this->S_d; delete this->D; delete this->R; delete this->N_bins; delete this->event_list;
 }
