@@ -4,6 +4,18 @@
 #include "ObjectsEvents.h"
 #include <vector>
 
+Event::Event(const Event &event) {
+    // copy constructor
+    this->alt = event.alt; this->freq = event.freq;
+    this->times = new vector<double>(*event.times);
+    this->run_event = run_event;
+}
+
+Event::~Event() {
+    // destructor
+    delete this->times;
+}
+
 void default_event(const Array1D<double>& S, const Array1D<double>& S_d, const Array1D<double>& D, const Array1D<double>& R, 
                    const ArrayND<double,2>& N, const Array1D<double>& logL_bins, const Array1D<double>& chi_bins, 
                    Array1D<double>& dS, Array1D<double>& dS_d, Array1D<double>& dD, Array1D<double>& dR, ArrayND<double,2>& dN, 
