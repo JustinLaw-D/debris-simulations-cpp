@@ -19,7 +19,7 @@ class NCell:
                  expl_rate_L=None, expl_rate_D=None, C_sat=None, sigma_sat=None, expl_rate_R=None, C_rb=None, sigma_rb=None, 
                  v=None, delta=None, alphaS=None, alphaD=None, alphaN=None, alphaR=None, P=None, m_s=None, m_rb=None, 
                  AM_sat=None, AM_rb=None, tau_do=None, L_min=1e-3, L_max=1, num_L=10, chi_min=-2, chi_max=1.5, num_chi=10,
-                 update_period=1/12):
+                 update_period=1/12, min_lifetime=1/1000):
         '''
         Constructor for NCell class
     
@@ -61,17 +61,18 @@ class NCell:
                  avoid in each shell (list of lists, default alphaN)
         P : post-mission disposal probability for satellites of each type in each shell (list of lists, default 0.95)
         m_s : mass of the satallites of each type (list, kg, default 250kg)
-        m_s : mass of the rocket bodies of each type (list, kg, default 250kg)
+        m_rb : mass of the rocket bodies of each type (list, kg, default 250kg)
         AM_sat : area-to-mass ratio of the satallites of each type (list, m^2/kg, default 1/(20*2.2)m^2/kg)
         AM_rb : area-to-mass ratio of the rocket bodies of each type (list, m^2/kg, default 1/(20*2.2)m^2/kg)
         tau_do : average deorbiting time for satellites of each type in each shell (list of lists, yr, default decay_time/10)
         L_min : minimum characteristic length to consider (m, default 1mm)
         L_max : maximum characteristic length to consider (m, default 1m)
         num_L : number of debris bins in characteristic length (default 10)
-        chi_min : minimum log10(A/M) to consider (log10(m^2/kg), default -3)
-        chi_max : maximum log10(A/M) to consider (log10(m^2/kg), default 3)
+        chi_min : minimum log10(A/M) to consider (log10(m^2/kg), default -2)
+        chi_max : maximum log10(A/M) to consider (log10(m^2/kg), default 1.5)
         num_chi : number of debris bins in log10(A/M) (default 10)
         update_period : how often to update the decay lifetimes (yr, default 1/12)
+        min_lifetime : minimum decay lifetime permitted (yr, default 1/1000)
 
         Output(s):
         NCell instance
@@ -125,6 +126,7 @@ class NCell:
         self.logL_edges = np.linspace(np.log10(L_min), np.log10(L_max), num=num_L+1)
         self.chi_edges = np.linspace(chi_min, chi_max, num=num_chi+1)
         self.update_period = update_period
+        self.min_lifetime = min_lifetime
 
         for i in range(0, len(S)): # iterate through shells
 
@@ -281,7 +283,7 @@ class NCell:
         # write parameters
         csv_file = open(true_path + 'params.csv', 'w', newline='')
         csv_writer = csv.writer(csv_file, dialect='unix')
-        csv_writer.writerow([self.num_L, self.num_chi, self.num_cells, self.update_period])
+        csv_writer.writerow([self.num_L, self.num_chi, self.num_cells, self.update_period, self.min_lifetime])
         csv_file.close()
 
         # write easy arrays
@@ -329,6 +331,7 @@ class NCell:
             atmos.num_chi = int(row[1])
             atmos.num_cells = int(row[2])
             atmos.update_period = float(row[3])
+            atmos.min_lifetime = float(row[4])
         csv_file.close()
 
         # load in simple numpy arrays

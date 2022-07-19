@@ -33,6 +33,8 @@ class ArrayND
         inline size_t get_tot_size() const; // get total number of elements
         inline T * get_arr() const; // gets the underlying array
         inline T & at(const array<size_t, N> &loc); // get reference to a specific element
+        void zero(); // sets everything in the array to zero
+        T sum_arr(); // gives the sum of all elements in the array
         void copy_sum(const T num); // basic arithmatic with constant values, modifying current array
         void copy_sub(const T num);
         void copy_mul(const T num);
@@ -242,6 +244,24 @@ T & ArrayND<T, N>::at(const array<size_t,N> &loc) {
         real_loc += loc[i]*skip_mul;
     }
     return (this->arr)[real_loc];
+}
+
+template <typename T, size_t N>
+void ArrayND<T, N>::zero() {
+    // sets every element in the array to zero
+    for (size_t i = 0; i < this->tot_size; i++) {
+        this->arr[i] = 0;
+    }
+}
+
+template <typename T, size_t N>
+T ArrayND<T, N>::sum_arr() {
+    // gives the sum of all elements in the array, assumes that T is numeric
+    T sum = 0;
+    for (size_t i = 0; i < this->tot_size; i++) {
+        sum += this->arr[i];
+    }
+    return sum;
 }
 
 template <typename T, size_t N>
