@@ -4,6 +4,17 @@
 #include "ObjectsEvents.h"
 #include <vector>
 
+Coll::Coll(const Coll &coll) {
+    // copy constructor
+    this->m1 = coll.m1; this->m2 = coll.m2;
+    this->num = coll.num; this->typ = coll.typ;
+}
+
+Expl::Expl(const Expl &expl) {
+    // copy constructor
+    this->C = expl.C; this->num = expl.num; this->typ = expl.typ;
+}
+
 Event::Event(const Event &event) {
     // copy constructor
     this->alt = event.alt; this->freq = event.freq;

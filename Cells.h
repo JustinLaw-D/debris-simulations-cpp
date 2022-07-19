@@ -373,6 +373,105 @@ bool NCell<URNG>::add_event(Event * event, double alt) {
 }
 
 template <class URNG>
+void NCell<URNG>::sim_colls(ArrayND<double,3> &dNdt, double rate, double m1, double m2, size_t index, char typ) {
+    /*
+    updates dNdt by distributing a rate of collisions between two objects of mass m_1, m_2 in
+    the index'th cell
+    
+    Input(s):
+    dNdt : current dNdt values (1/yr)
+    rate : rate of collisions to simulate (1/yr)
+    m_1 : mass of the first object (kg)
+    m_2 : mass of the second object (kg)
+    index : index of the cell the collision occurs in
+    typ : object type of the main (first) object, either 's' (satellite) or 'r' (rocket body)
+
+    Output(s): None
+    */
+
+    if (rate == 0.0) {return;} // just skip everything if you can
+    double v_rel = this->cells[index]->v; // collision velocity (km/s)
+    double M = calc_M(m_1, m_2, v_rel); // M factor
+    // min and max characteristic lengths
+    double L_min = pow(10, this->logL_edges->at(0)); double L_max = pow(10, this->logL_edges->at(this->num_L));
+    double N_debris = calc_Ntot(M, Lmin, Lmax, 'c', 0.0)*rate; // total rate of debris creation
+    ArrayND<double, 4> * prob_table; // pointer to probability table to use
+    if (typ == 's') {prob_table = this->sat_coll_prob_tables;} // get right probability table
+    else {prob_table = self.rb_coll_probability_tables;}
+    for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells to send debris to
+        for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
+            for (size_t k = 0; k < this->num_chi; k++) {
+                dNdt->at(array<size_t,3>({i,j,k})) += N_debris*(prob_table->at(array<size_t,4>({index,i,j,k})));
+            }
+        }
+    }
+}
+
+template <class URNG>
+void NCell<URNG>::sim_colls_satrb(ArrayND<double,3> &dNdt, double rate, double m, size_t index, char typ) {
+    /*
+    version of sim_coll used for the satellite-rocket body collisions workaround, where
+    each object is simulated as having its own catastrophic collision
+    
+    Input(s):
+    dNdt : current dNdt values (1/yr)
+    rate : rate of collisions to simulate (1/yr)
+    m : mass of the object (kg)
+    index : index of the cell the collision occurs in
+    typ : object type in the collision, either 's' (satellite) or 'r' (rocket body)
+
+    Output(s): None
+    */
+
+    if (rate == 0.0) {return;} // just skip everything if you can
+    // min and max characteristic lengths
+    double L_min = pow(10, this->logL_edges->at(0)); double L_max = pow(10, this->logL_edges->at(this->num_L));
+    double N_debris = calc_Ntot(m, Lmin, Lmax, 'c', 0.0)*rate // total rate of debris creation
+    ArrayND<double, 4> * prob_table; // pointer to probability table to use
+    if (typ == 's') {prob_table = this->sat_coll_prob_tables;} // get right probability table
+    else {prob_table = self.rb_coll_probability_tables;}
+    for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells to send debris to
+        for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
+            for (size_t k = 0; k < this->num_chi; k++) {
+                dNdt->at(array<size_t,3>({i,j,k})) += N_debris*(prob_table->at(array<size_t,4>({index,i,j,k})));
+            }
+        }
+    }
+}
+
+template <class URNG>
+void NCell<URNG>::sim_expl(ArrayND<double,3> &dNdt, double rate, double C, size_t index, char typ) {
+    /*
+    updates dNdt by distributing a rate of explosions for an object with constant C in
+    the index'th cell
+    
+    Parameter(s):
+    dNdt : current dNdt values (1/yr)
+    rate : rate of explosions to simulate (1/yr)
+    C : fit constant for the explosion
+    index : index of the cell the collision occurs in
+    typ : object type of the main object, either 's' (satellite) or 'r' (rocket body)
+
+    Output(s): None
+    */
+
+    if (rate == 0.0) {return;} // just skip everything if you can
+    // min and max characteristic lengths
+    double L_min = pow(10, this->logL_edges->at(0)); double L_max = pow(10, this->logL_edges->at(this->num_L));
+    double N_debris = calc_Ntot(0.0, Lmin, Lmax, 'e', C)*rate // total rate of debris creation
+    ArrayND<double, 4> * prob_table; // pointer to probability table to use
+    if (typ == 's') {prob_table = this->sat_expl_prob_tables;} // get right probability table
+    else {prob_table = self.rb_expl_probability_tables;}
+    for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells to send debris to
+        for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
+            for (size_t k = 0; k < this->num_chi; k++) {
+                dNdt->at(array<size_t,3>({i,j,k})) += N_debris*(prob_table->at(array<size_t,4>({index,i,j,k})));
+            }
+        }
+    }
+}
+
+template <class URNG>
 void NCell<URNG>::update_lifetimes(double t) {
     /*
     updates decay lifetimes in all cells in the system

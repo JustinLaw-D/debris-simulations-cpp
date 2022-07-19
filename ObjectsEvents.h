@@ -47,6 +47,8 @@ struct Coll
     double m2; // mass of the second object (kg)
     char typ; // type of collision ('s' for satellite-satellite, 'm' for satellite-rocket, 'r' for rocket-rocket)
     size_t num; // number of collisions of this type
+
+    Coll(const Coll &coll);
 };
 
 struct Expl
@@ -54,6 +56,8 @@ struct Expl
     double C; // fit constant of the exploding body
     char typ; // type of the exploding body ('s' for satellite, 'r' for rocket)
     size_t num; // number of explosions of this type
+
+    Expl(const Expl &expl); // copy constructor
 };
 
 /*
