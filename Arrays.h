@@ -89,7 +89,11 @@ ArrayND<T, N>::ArrayND(const array<size_t, N> &dim) {
     for (size_t i = 0; i < N; i++) {
         tot_size *= dim[i];
     }
-    this->arr = new T[tot_size]; this->dim = array<size_t, N>(dim); this->tot_size = tot_size;
+    if (tot_size == 0) {
+        this->tot_size = 0;
+    } else {
+        this->arr = new T[tot_size]; this->dim = array<size_t, N>(dim); this->tot_size = tot_size;
+    }
 }
 
 template <typename T, size_t N>
@@ -154,6 +158,7 @@ ArrayND<T,N>::ArrayND(const string &filepath) {
             temp >> curr_dim; // convert to size_t
             this->dim[i] = curr_dim; this->tot_size *= curr_dim;
             delete [] num_arr;
+            dim_indx = next_comma + 2;
         }
         delete [] header;
         
@@ -453,7 +458,9 @@ bool ArrayND<T, N>::save(string &filepath) {
 template <typename T, size_t N>
 ArrayND<T, N>::~ArrayND() {
     // destructor for ND array
-    delete [] this->arr;
+    if (this->tot_size != 0) {
+        delete [] this->arr;
+    }
 }
 
 template <typename T>
@@ -480,7 +487,11 @@ Array1D<T>::Array1D(const size_t len) {
     Output(s):
     arr_out : Array1D object with specified size
     */
-    this->arr = new T[len]; this->dim = array<size_t, 1>({len}); this->tot_size = len;
+    if (len == 0) {
+        this->tot_size = 0;
+    } else {
+        this->arr = new T[len]; this->dim = array<size_t, 1>({len}); this->tot_size = len;
+    }
 }
 
 template <typename T>

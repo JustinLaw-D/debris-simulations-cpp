@@ -132,7 +132,7 @@ class Cell:
 
         # load N_bins values
         cell.N_bins = []
-        bin_path = filepath + "N_bins"
+        bin_path = filepath + "N_bins/"
         i = 0
         while True:
             try:

@@ -4,10 +4,20 @@
 #include "ObjectsEvents.h"
 #include <vector>
 
+Coll::Coll() {
+    // basic constructor
+    this->m1 = 0.0; this->m2 = 0.0; this->num = 0; this->typ = 's';
+}
+
 Coll::Coll(const Coll &coll) {
     // copy constructor
     this->m1 = coll.m1; this->m2 = coll.m2;
     this->num = coll.num; this->typ = coll.typ;
+}
+
+Expl::Expl() {
+    // basic constructor
+    this->C = 0.0; this->num = 0; this->typ = 's';
 }
 
 Expl::Expl(const Expl &expl) {

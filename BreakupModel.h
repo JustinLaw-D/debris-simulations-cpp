@@ -50,7 +50,7 @@ array<double, 3> rand_dir(URNG &generator) {
     double x; double y; double z;
     do { // randomly generate numbers until the vector is inside the unit sphere
         x = udist(generator); y = udist(generator); z = udist(generator);
-    } while (x*x + y*y + z*z > 1);
+    } while (x*x + y*y + z*z > 1.0);
     double norm = sqrt(x*x + y*y + z*z); // get the magintude of the vector to normalize
     return array<double, 3>({x/norm, y/norm, z/norm});
 }

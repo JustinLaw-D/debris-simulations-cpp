@@ -181,7 +181,7 @@ Cell::Cell(const string &filepath) {
         num_rb_types_temp >> this->num_rb_types; num_sat_types_temp >> this->num_sat_types;
         this->alt = stod(row[2]); this->dh = stod(row[3]); this->v = stod(row[4]);
         // calculate related parameters
-        this->vyr = (this->v)*60.0*60.0*24.0*365.25; this->v_orbit = sqrt(G*Me/((Re + this->alt)*1000.0));
+        this->vyr = (this->v)*60.0*60.0*24.0*365.25; this->v_orbit = sqrt(G*Me/((Re + this->alt)*1000.0))/1000.0;
         this->V = 4*M_PI*(Re + this->alt)*(Re + this->alt)*(this->dh);
     } else {
         throw invalid_argument("Cell params.csv file could not be opened");
@@ -196,14 +196,14 @@ Cell::Cell(const string &filepath) {
     // calculate related values
     this->logL_ave = new Array1D<double>(num_L); this->chi_ave = new Array1D<double>(num_chi);
     for (size_t i = 0; i < this->num_L; i++) { // setup average arrays
-        this->logL_ave->at(i) = (this->logL_edges->at(i) + this->logL_edges->at(i+1))/2;
+        this->logL_ave->at(i) = (this->logL_edges->at(i) + this->logL_edges->at(i+1))/2.0;
     } 
     for (size_t i = 0; i < this->num_chi; i++) {
-        this->chi_ave->at(i) = (this->chi_edges->at(i) + this->chi_edges->at(i+1))/2;
+        this->chi_ave->at(i) = (this->chi_edges->at(i) + this->chi_edges->at(i+1))/2.0;
     }
     this->trackable = new ArrayND<bool,2>(false, array<size_t,2>({this->num_L, this->num_chi}));
     for (size_t i = 0; i < this->num_L; i++) {
-        if (pow(10, logL_ave->at(i)) >= 1.0/10.0) {
+        if (pow(10.0, logL_ave->at(i)) >= 1.0/10.0) {
             for (size_t j = 0; j < this->num_chi; j++) {
                 (this->trackable)->at(array<size_t,2>({i,j})) = true;
             }
@@ -261,6 +261,13 @@ Cell::Cell(const string &filepath) {
     // load satellites
     for (size_t i = 0; i < this->num_sat_types; i++) {
         this->load_sat(filepath + string("Satellite") + to_string(i) + string("/"), i);
+    }
+
+    // calculate related variables
+    this->ascending = new Array1D<bool>(this->num_sat_types);
+    for (size_t i = 0; i < this->num_sat_types; i++) {
+        if (this->target_alt->at(i) > (this->alt + (this->dh)/2.0)) {(this->ascending)->at(i) = true;}
+        else {(this->ascending)->at(i) = false;}
     }
 
     // setup rocket body parameters
@@ -585,9 +592,9 @@ void Cell::update_cat_N() {
     double ave_L;
     double ave_AM;
     for (size_t i = 0; i < this->num_L; i++) {
-        ave_L = pow(10, (this->logL_ave)->at(i)); // get average length in m
+        ave_L = pow(10.0, (this->logL_ave)->at(i)); // get average length in m
         for (size_t j = 0; j < this->num_chi; j++) {
-            ave_AM = pow(10, (this->chi_ave)->at(i)); // get average AM in m^2/kg
+            ave_AM = pow(10.0, (this->chi_ave)->at(j)); // get average AM in m^2/kg
             for (size_t k = 0; k < this->num_sat_types; k++) {
                 is_cat = is_catastrophic((this->m_s)->at(k), ave_L, ave_AM, this->v); // determine if catestrophic
                 (this->cat_sat_N)->at(array<size_t,3>({k,i,j})) = is_cat; // set the result
@@ -702,7 +709,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             alphaS1 = this->alphaS->at(j);
             
             // calculate combined cross-section
-            sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2*sqrt(sigma_loc_km0*sigma_loc_km1);
+            sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2.0*sqrt(sigma_loc_km0*sigma_loc_km1);
 
             // calculate collisions
             dSSdt_loc = alphaS0*alphaS1*sigma_comb*(this->vyr)*S0*S1/(this->V);
@@ -720,9 +727,9 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             D_dt.at(array<size_t,2>({i,j})) += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc; // these aren't double counted
             dC_ldt += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc;
             if (i == j) { // destroys two of the same type in one go
-                dSdt.at(i) -= 2*dSSdt_loc + dSS_ddt_loc + dSDdt_loc;
-                dS_ddt.at(i) -= dSS_ddt_loc + 2*dS_dS_ddt_loc + dS_dDdt_loc;
-                dDdt.at(i) -= dSDdt_loc + dS_dDdt_loc + 2*dDDdt_loc;
+                dSdt.at(i) -= 2.0*dSSdt_loc + dSS_ddt_loc + dSDdt_loc;
+                dS_ddt.at(i) -= dSS_ddt_loc + 2.0*dS_dS_ddt_loc + dS_dDdt_loc;
+                dDdt.at(i) -= dSDdt_loc + dS_dDdt_loc + 2.0*dDDdt_loc;
             } else { // doesnt, and have to treat first and second satellite types seperately sometimes
                 dSdt.at(i) -= dSSdt_loc + dSS_ddt_loc + dSDdt_loc;
                 dS_ddt.at(i) -= dS_dS_ddt_loc + dS_dDdt_loc;
@@ -739,7 +746,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             sigma_loc_km1 = this->sigma_rb_km->at(j);
             
             // calculate combined cross-section
-            sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2*sqrt(sigma_loc_km0*sigma_loc_km1);
+            sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2.0*sqrt(sigma_loc_km0*sigma_loc_km1);
 
             // calculate collisions
             dSRdt_loc = alphaR0*sigma_comb*(this->vyr)*S0*R1/(this->V);
@@ -761,19 +768,20 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
         double expl_D = (this->expl_rate_D->at(i))*D0/100.0;
         double decay_S = D0/(this->tau_s->at(i)); // satellites ascending/descending, switching to de-orbit
         double kill_S = 0.0;
-        if ((this->ascending)->at(i) == true) { // failure on ascending
+        double ascend_S = 0.0;
+        if (this->ascending->at(i)) { // failure on ascending
             kill_S = S0/(this->fail_t->at(i));
+            ascend_S = S0/(this->up_time->at(i));
         } else { // end of lifetime
             kill_S = S0/(this->del_t->at(i));
         }
         double deorbit_S = SD0/(this->tau_do->at(i));
-        double ascend_S = S0/(this->up_time->at(i));
 
         // update return values
         double P_loc = this->P->at(i);
-        dSdt.at(i) -= expl_S + decay_S + kill_S + ascend_S;
-        dS_ddt.at(i) += P_loc*kill_S - deorbit_S;
-        dDdt.at(i) += kill_S*(1-P_loc) - decay_S;
+        dSdt.at(i) -= expl_S + kill_S;
+        dS_ddt.at(i) += P_loc*kill_S - expl_S_d;
+        dDdt.at(i) += kill_S*(1-P_loc) - expl_D;
         S_out.at(i) += ascend_S;
         S_dout.at(i) += deorbit_S;
         D_out.at(i) += decay_S;
@@ -813,7 +821,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             sigma_loc_km1 = this->sigma_rb_km->at(i);
             
             // calculate combined cross-section
-            sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2*sqrt(sigma_loc_km0*sigma_loc_km1);
+            sigma_comb = sigma_loc_km0 + sigma_loc_km1 + 2.0*sqrt(sigma_loc_km0*sigma_loc_km1);
 
             // calculate collision rate
             dRRdt_loc = R0*R1*sigma_comb*(this->vyr)/(this->V);
@@ -824,7 +832,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
                 dC_ldt += dRRdt_loc;
             }
             if (i == j) { // destroys two of the same type in one go
-                dRdt.at(i) -= 2*dRRdt_loc;
+                dRdt.at(i) -= 2.0*dRRdt_loc;
             } else {
                 dRdt.at(i) -= dRRdt_loc;
             }
@@ -845,7 +853,6 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             N_out.at(array<size_t,2>({i,j})) = N.at(array<size_t,2>({i,j}))/(this->tau_N->at(j));
         }
     }
-
 }
 
 Cell::~Cell() {

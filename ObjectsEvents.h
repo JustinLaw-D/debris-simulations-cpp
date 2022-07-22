@@ -48,6 +48,7 @@ struct Coll
     char typ; // type of collision ('s' for satellite-satellite, 'm' for satellite-rocket, 'r' for rocket-rocket)
     size_t num; // number of collisions of this type
 
+    Coll();
     Coll(const Coll &coll);
 };
 
@@ -57,6 +58,7 @@ struct Expl
     char typ; // type of the exploding body ('s' for satellite, 'r' for rocket)
     size_t num; // number of explosions of this type
 
+    Expl();
     Expl(const Expl &expl); // copy constructor
 };
 

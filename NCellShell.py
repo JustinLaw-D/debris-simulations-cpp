@@ -184,7 +184,7 @@ class NCell:
                 if del_t[i][j] is None:
                     del_t[i][j] = 5
                 if fail_t[i][j] is None:
-                    fail_t[i][j] = 5
+                    fail_t[i][j] = 1000
                 if expl_rate_L[j] is None:
                     expl_rate_L[j] = 0
                 if expl_rate_D[j] is None:
@@ -239,15 +239,18 @@ class NCell:
                 rb_list.append(rb)
 
             # calculate decay paremeters for debris, initial debris values
-            N_initial = np.zeros((num_L, num_chi))
-            # generate initial distributions
-            lethal_L = np.log10(randL(N_l[i], 1e-1, L_max, 'expl')) # explosions are the main source https://www.esa.int/esapub/bulletin/bullet109/chapter16_bul109.pdf
-            nlethal_L = np.log10(randL(delta[i]*N_l[i], L_min, 1e-1, 'expl'))
+            N_initial = np.zeros((num_L, num_chi), dtype=np.double)
             for j in range(num_L):
                 bin_L = 0
                 bin_bot_L, bin_top_L = self.logL_edges[j], self.logL_edges[j+1]
-                bin_L += len(lethal_L[(bin_bot_L < lethal_L) & (lethal_L < bin_top_L)])
-                bin_L += len(nlethal_L[(bin_bot_L < nlethal_L) & (nlethal_L < bin_top_L)])
+                if (10**bin_bot_L < -1) and (bin_top_L > -1):
+                    lam_factor = (-1-bin_bot_L)/(bin_top_L-bin_bot_L)
+                    bin_L += lam_factor*N_l[i]*delta[i]*(L_cdf(1e-1, L_min, 1e-1, 'expl') - L_cdf(10**bin_bot_L, L_min, 1e-1, 'expl'))
+                    bin_L += (1-lam_factor)*N_l[i]*(L_cdf(10**bin_top_L, 1e-1, L_max, 'expl') - L_cdf(10**bin_bot_L, 1e-1, L_max, 'expl'))
+                elif bin_bot_L >= -1:
+                    bin_L += N_l[i]*(L_cdf(10**bin_top_L, 1e-1, L_max, 'expl') - L_cdf(10**bin_bot_L, 1e-1, L_max, 'expl'))
+                else:
+                    bin_L += N_l[i]*delta[i]*(L_cdf(10**bin_top_L, L_min, 1e-1, 'expl') - L_cdf(10**bin_bot_L, L_min, 1e-1, 'expl'))
                 N_initial[j,0] = bin_L # put everything in the lowest A/M bin
 
             # initialize cell
@@ -350,3 +353,137 @@ class NCell:
             atmos.cells.append(Cell.load(cell_path))
 
         return atmos
+
+    def get_t(self):
+        '''
+        returns array of times used in the simulation
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        array of t values (yr)
+        '''
+
+        return self.t
+    
+    def get_S(self):
+        '''
+        returns list of lists of lists for number of live satellites in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of S values for each cell of each type, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            to_return.append([])
+            for j in range(cell.num_sat_types):
+                to_return[-1].append(cell.satellites[j].S)
+        return to_return
+
+    def get_SD(self):
+        '''
+        returns list of lists of lists for number of de-orbiting satellites in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of S_d values for each cell of each type, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            to_return.append([])
+            for j in range(cell.num_sat_types):
+                to_return[-1].append(cell.satellites[j].S_d)
+        return to_return
+
+    def get_D(self):
+        '''
+        returns list of lists of lists for number of derelict satellites in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of D values for each cell of each type, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            to_return.append([])
+            for j in range(cell.num_sat_types):
+                to_return[-1].append(cell.satellites[j].D)
+        return to_return
+
+    def get_R(self):
+        '''
+        returns list of lists of lists for number of rocket bodies in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of R values for each cell of each type, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            to_return.append([])
+            for j in range(cell.num_rb_types):
+                to_return[-1].append(cell.rockets[j].num)
+        return to_return
+
+    def get_N(self):
+        '''
+        returns arrays for number of debris in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of total N values for each cell, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            N = []
+            for i in range(len(cell.N_bins)):
+                N.append(np.sum(cell.N_bins[i]))
+            to_return.append(np.array(N))
+        return to_return
+
+    def get_C(self):
+        '''
+        returns arrays for number of collisions in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of total C values for each cell, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            to_return.append(np.array(cell.C_l) + np.array(cell.C_nl))
+        return to_return
+    
+    def get_Cl(self):
+        '''
+        returns arrays for number of catastrophic collisions in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of C_l values for each cell, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            to_return.append(cell.C_l)
+        return to_return
+
+    def get_Cnl(self):
+        '''
+        returns arrays for number of non-catastrophic collisions in each shell
+        Parameter(s): None
+        Keyword Parameter(s): None
+        Returns:
+        list of array of C_nl values for each cell, in order of ascending altitude
+        '''
+
+        to_return = []
+        for cell in self.cells:
+            to_return.append(cell.C_nl)
+        return to_return

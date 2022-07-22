@@ -23,8 +23,8 @@ double density(const double alt, double t, const double mo0) {
     if (i > num_alts - 2) {i = num_alts - 2;}
     if (i < 0) {i = 0;}
 
-    double logalt = log10(alt) + 3; // log(alt) in m
-    double mo_frac = t*12 + mo0; // fractional month index
+    double logalt = log10(alt) + 3.0; // log(alt) in m
+    double mo_frac = t*12.0 + mo0; // fractional month index
     double mo_int; // will contain the integer part of mo_frac
     double frac_part = modf(mo_frac, &mo_int); // split the two parts
     double mo = static_cast<double>(static_cast<size_t>(mo_int) % num_months) + frac_part; // calculate month (normalized by cycle)
@@ -34,20 +34,20 @@ double density(const double alt, double t, const double mo0) {
     if (moID1 > num_months-1) {moID1 = 0;} 
     double F107 = f107_mo[moID] + (f107_mo[moID1]-f107_mo[moID])*(mo-moID); // get interpolated F107
 
-    double rho = 0; // atmospheric density
+    double rho = 0.0; // atmospheric density
 
-    if (F107 <= 65) { // interpolate to get density value
-        rho = pow(10, (logdenL[i]+(logdenL[i+1]-logdenL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
-    } else if (F107 <= 140) {
-        double d0 = pow(10, (logdenL[i]+(logdenL[i+1]-logdenL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
-        double d1 = pow(10, (logdenM[i]+(logdenM[i+1]-logdenM[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
+    if (F107 <= 65.0) { // interpolate to get density value
+        rho = pow(10.0, (logdenL[i]+(logdenL[i+1]-logdenL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
+    } else if (F107 <= 140.0) {
+        double d0 = pow(10.0, (logdenL[i]+(logdenL[i+1]-logdenL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
+        double d1 = pow(10.0, (logdenM[i]+(logdenM[i+1]-logdenM[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
         rho = d0 + (d1-d0)*(F107-65.0)/75.0;
-    } else if (F107 <= 250) {
-        double d0 = pow(10, (logdenM[i]+(logdenM[i+1]-logdenM[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
-        double d1 = pow(10, (logdenHL[i]+(logdenHL[i+1]-logdenHL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
+    } else if (F107 <= 250.0) {
+        double d0 = pow(10.0, (logdenM[i]+(logdenM[i+1]-logdenM[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
+        double d1 = pow(10.0, (logdenHL[i]+(logdenHL[i+1]-logdenHL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
         rho = d0 + (d1-d0)*(F107-140.0)/110.0;
     } else {
-        rho = pow(10, (logdenHL[i]+(logdenHL[i+1]-logdenHL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
+        rho = pow(10.0, (logdenHL[i]+(logdenHL[i+1]-logdenHL[i])/(logz[i+1]-logz[i])*(logalt-logz[i])));
     }
 
     return rho;
@@ -107,7 +107,7 @@ double drag_lifetime(const double alt_i, const double alt_f, const double a_over
         dadt0 = dadt(alt, time, m0, a_over_m, CD);
         alt1 = alt + dadt0*dt;
         dadt1 = dadt(alt1, time + dt, m0, a_over_m, CD);
-        ave_dadt = (dadt0 + dadt1)/2;
+        ave_dadt = (dadt0 + dadt1)/2.0;
         alt += ave_dadt*dt;
         time += dt;
         dt = -(alt/ave_dadt)*dtfactor;
@@ -138,5 +138,5 @@ double drag_lifetime_default(const double alt_i, const double alt_f, const doubl
 
     Note(s): outputs tmax if the computed value is larger than tmax
     */
-    return drag_lifetime(alt_i, alt_f, a_over_m, 2.2, 100.0/(60.0*60.0*24.0*365.25), m0, 0.0, 100.0, 1.0/100.0, 1000.0);
+    return drag_lifetime(alt_i, alt_f, a_over_m, 2.2, 100.0/(60.0*60.0*24.0*365.25), m0, 0.0, 0.1, 1.0/100.0, 1000.0);
 }

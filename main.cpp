@@ -9,6 +9,7 @@
 #include <vector>
 #include <iostream>
 #include <random>
+#include <time.h>
 using namespace std;
 
 void array_test() {
@@ -117,11 +118,29 @@ void atmospheric_test() {
     cout << drag_lifetime_default(600.0+25.0/2.0, 600.0-25.0/2.0, 1.0/40.0, 1.0) << endl;
 }
 
+void run_test() {
+    time_t org_time;
+    time_t dummy;
+    string filepath = string("./test_save/");
+    default_random_engine generator = default_random_engine();
+    cout << "Hi" << endl;
+    NCell<default_random_engine> test = NCell<default_random_engine>(filepath, 1000, generator);
+    cout << "Running simulation" << endl;
+    cout << time(&org_time) << endl;
+    test.run_sim_euler(30.0, 0.001, true);
+    cout << time(&dummy)-org_time << endl;
+    cout << "Finished simulation" << endl;
+    string temp[2] = {string("./"), string("test_resave")};
+    test.save(temp[0], temp[1], 0.0);
+    cout << "Made it!" << endl;
+}
+
 int main() {
     //array_test();
     //array1D_test();
     //cell_test();
-    load_test();
+    //load_test();
     //atmospheric_test();
+    run_test();
     return 0;
 }
