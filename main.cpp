@@ -8,7 +8,6 @@
 #include <array>
 #include <vector>
 #include <iostream>
-#include <random>
 #include <time.h>
 using namespace std;
 
@@ -105,9 +104,8 @@ void cell_test() {
 
 void load_test() {
     string filepath = string("./test_save/");
-    default_random_engine generator = default_random_engine();
     cout << "Hi" << endl;
-    NCell<default_random_engine> test = NCell<default_random_engine>(filepath, 1000, generator);
+    NCell test = NCell(filepath, 1000);
     string temp[2] = {string("./"), string("test_resave")};
     cout << "Here" << endl;
     test.save(temp[0], temp[1], 0.0);
@@ -122,9 +120,8 @@ void run_test() {
     time_t org_time;
     time_t dummy;
     string filepath = string("./test_save/");
-    default_random_engine generator = default_random_engine();
     cout << "Hi" << endl;
-    NCell<default_random_engine> test = NCell<default_random_engine>(filepath, 1000, generator);
+    NCell test = NCell(filepath, 1000);
     cout << "Running simulation" << endl;
     cout << time(&org_time) << endl;
     test.run_sim_euler(30.0, 0.001, true);
