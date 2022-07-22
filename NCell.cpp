@@ -193,8 +193,8 @@ void NCell::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, 
     double * theta = new double[num_dir];
     double P_temp_theta; // used to hold cummulative probability generated for theta
     for (size_t i = 0; i < num_dir; i++) {
-        phi[i] = i*2.0*M_PI/(num_dir-1);
-        P_temp_theta = i/(num_dir-1);
+        phi[i] = static_cast<double>(i)*2.0*M_PI/(static_cast<double>(num_dir)-1.0);
+        P_temp_theta = static_cast<double>(i)/(static_cast<double>(num_dir)-1.0);
         theta[i] = acos(1.0-2.0*P_temp_theta);
     }
     for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells
