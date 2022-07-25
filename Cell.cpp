@@ -644,7 +644,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
     Note: Assumes that collisions with debris of L_cm < 10cm cannot be avoided, and that the given time input is valid
     */
-
+    array<size_t,2> index_2d = {0,0}; array<size_t,3> index_3d = {0,0,0}; 
     // get current N value
     ArrayND<double,2> N = *(this->N_bins->back());
 
@@ -671,11 +671,14 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
         double dS_dRdt_loc; double dDDdt_loc; double dDRdt_loc;
         double S1; double SD1; double D1; double alphaS1;
 
+        index_3d[0] = i;
         // handle satellite-debris collisions
         for (size_t j = 0; j < this->num_L; j++) {
+            index_2d[0] = j; index_3d[1] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                n = N.at(array<size_t,2>({j,k}))/(this->V); // calculate debris density
-                if (this->trackable->at(array<size_t,2>({j,k}))) { // if avoidance is possible
+                index_2d[1] = k; index_3d[2] = k;
+                n = N.at(index_2d)/(this->V); // calculate debris density
+                if (this->trackable->at(index_2d)) { // if avoidance is possible
                     dSdt_loc = alphaN0*n*sigma_loc_km0*(this->vyr)*S0;
                     dS_ddt_loc = alphaN0*n*sigma_loc_km0*(this->vyr)*SD0;
                 } else { // if avoidance is impossible
@@ -685,13 +688,13 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
                 dDdt_loc = n*sigma_loc_km0*(this->vyr)*D0; // never avoids
                 // update return values
                 dSdt.at(i) -= dSdt_loc; dS_ddt.at(i) -= dS_ddt_loc;
-                if ((this->cat_sat_N)->at(array<size_t,3>({i,j,k})) == false) { // collisions that create derelicts
+                if ((this->cat_sat_N)->at(index_3d) == false) { // collisions that create derelicts
                     dDdt.at(i) += dSdt_loc + dS_ddt_loc;
                 } else { // collisions that destroy derelicts
                     dDdt.at(i) -= dDdt_loc;
                 }
                 CS_dt.at(array<size_t,3>({i,j,k})) += dSdt_loc + dS_ddt_loc + dDdt_loc;
-                if (this->cat_sat_N->at(array<size_t,3>({i,j,k})) == true) { // update collision count
+                if (this->cat_sat_N->at(index_3d) == true) { // update collision count
                     dC_ldt += dSdt_loc + dS_ddt_loc + dDdt_loc;
                 } else {
                     dC_nldt += dSdt_loc + dS_ddt_loc + dDdt_loc;
@@ -699,8 +702,10 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             }
         }
 
+        index_2d[0] = i;
         // handle satellite-satellite collisions
         for (size_t j = 0; j < this->num_sat_types; j++) {
+            index_2d[1] = j;
             // get local parameters for this satellite type
             S1 = this->S->at(time)->at(j);
             SD1 = this->S_d->at(time)->at(j);
@@ -721,10 +726,10 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
             // update return values
             if (i <= j) { // avoid double counting
-                D_dt.at(array<size_t,2>({i,j})) += dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc;
+                D_dt.at(index_2d) += dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc;
                 dC_ldt += dSSdt_loc + dS_dS_ddt_loc + dDDdt_loc;
             }
-            D_dt.at(array<size_t,2>({i,j})) += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc; // these aren't double counted
+            D_dt.at(index_2d) += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc; // these aren't double counted
             dC_ldt += dSS_ddt_loc + dSDdt_loc + dS_dDdt_loc;
             if (i == j) { // destroys two of the same type in one go
                 dSdt.at(i) -= 2.0*dSSdt_loc + dSS_ddt_loc + dSDdt_loc;
@@ -741,6 +746,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
         // handle satellite-rocket collisions
         for (size_t j = 0; j < this->num_rb_types; j++) {
+            index_2d[1] = j;
             // get local parameters for this rocket type
             R1 = this->R->at(time)->at(j);
             sigma_loc_km1 = this->sigma_rb_km->at(j);
@@ -754,7 +760,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             dDRdt_loc = sigma_comb*(this->vyr)*D0*R1/(this->V);
 
             // update return values
-            DR_dt.at(array<size_t,2>({i,j})) += dSRdt_loc + dS_dRdt_loc + dDRdt_loc; // these aren't double counted
+            DR_dt.at(index_2d) += dSRdt_loc + dS_dRdt_loc + dDRdt_loc; // these aren't double counted
             dC_ldt += dSRdt_loc + dS_dRdt_loc + dDRdt_loc;
             dSdt.at(i) -= dSRdt_loc;
             dS_ddt.at(i) -= dS_dRdt_loc;
@@ -789,6 +795,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
     // handle rocket-body only events
     for (size_t i = 0; i < this->num_rb_types; i++) {
+        index_3d[0] = i;
         // setup temp local parameter
         double dRRdt_loc; double dRdt_loc;
 
@@ -798,15 +805,17 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
         // handle rocket-debris collisions
         for (size_t j = 0; j < this->num_L; j++) {
+            index_3d[1] = j; index_2d[0] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                n = N.at(array<size_t,2>({j,k}))/(this->V); // calculate debris density
+                index_3d[2] = k; index_2d[1] = k;
+                n = N.at(index_2d)/(this->V); // calculate debris density
                 dRdt_loc = n*sigma_loc_km0*(this->vyr)*R0; // never avoids
                 // update return values
-                if ((this->cat_rb_N)->at(array<size_t,3>({i,j,k})) == true) { // collisions that destroy rockets
+                if ((this->cat_rb_N)->at(index_3d) == true) { // collisions that destroy rockets
                     dRdt.at(i) -= dRdt_loc;
                 }
-                CR_dt.at(array<size_t,3>({i,j,k})) += dRdt_loc;
-                if (this->cat_rb_N->at(array<size_t,3>({i,j,k})) == true) { // update collision count
+                CR_dt.at(index_3d) += dRdt_loc;
+                if (this->cat_rb_N->at(index_3d) == true) { // update collision count
                     dC_ldt += dRdt_loc;
                 } else {
                     dC_nldt += dRdt_loc;
@@ -814,8 +823,10 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
             }
         }
 
+        index_2d[0] = i;
         // handle rocket-rocket collisions
         for (size_t j = 0; j < this->num_rb_types; j++) {
+            index_2d[1] = j;
             // get local parameters for this rocket type
             R1 = this->R->at(i)->at(time);
             sigma_loc_km1 = this->sigma_rb_km->at(i);
@@ -828,7 +839,7 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
             // update return values
             if (i <= j) { // avoid double counting
-                R_dt.at(array<size_t,2>({i,j})) += dRRdt_loc;
+                R_dt.at(index_2d) += dRRdt_loc;
                 dC_ldt += dRRdt_loc;
             }
             if (i == j) { // destroys two of the same type in one go
@@ -849,8 +860,10 @@ void Cell::dxdt_cell(size_t time, Array1D<double> &dSdt, Array1D<double> &dS_ddt
 
     // handle debris decays
     for (size_t i = 0; i < this->num_L; i++) {
+        index_2d[0] = i;
         for (size_t j = 0; j < this->num_chi; j++) {
-            N_out.at(array<size_t,2>({i,j})) = N.at(array<size_t,2>({i,j}))/(this->tau_N->at(j));
+            index_2d[1] = j;
+            N_out.at(index_2d) = N.at(index_2d)/(this->tau_N->at(j));
         }
     }
 }

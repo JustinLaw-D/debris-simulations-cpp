@@ -303,6 +303,9 @@ void NCell::dxdt(size_t time, bool upper, Array1D<double> **dSdt, Array1D<double
             }
         }
     }
+    // initialize arrays used for indexing
+    array<size_t, 2> array_2d_1 = {0,0}; array<size_t, 2> array_2d_2 = {0,0};
+    array<size_t, 3> array_3d_1 = {0,0,0}; array<size_t, 3> array_3d_2 = {0,0,0};
 
     // iterate through cells, from bottom to top
     for (size_t i = 0; i < this->num_cells; i++) {
@@ -316,26 +319,29 @@ void NCell::dxdt(size_t time, bool upper, Array1D<double> **dSdt, Array1D<double
         for (size_t j = 0; j < num_sat_types; j++) { // iterate through satellite types
             double m_s1 = curr_cell->m_s->at(j); // mass of the first satellite
             double C = curr_cell->C_s->at(j); // explosion constant of first satellite
-
+            array_2d_1[0] = j; array_2d_2[1] = j; array_3d_1[0] = j;
             for (size_t k = j+1; k < num_sat_types; k++) { // sat-sat collisions
+                array_2d_1[1] = k; array_2d_2[0] = k;
                 double m_s2 = curr_cell->m_s->at(k); // mass of the second satellite
-                this->sim_colls(dNdt, S_coll.at(array<size_t,2>({j,k})) + S_coll.at(array<size_t,2>({k,j})),
-                                m_s1, m_s2, i, 's');
-            } this->sim_colls(dNdt, S_coll.at(array<size_t,2>({j,j})), m_s1, m_s1, i, 's'); // collision of same type
+                this->sim_colls(dNdt, S_coll.at(array_2d_1) + S_coll.at(array_2d_2), m_s1, m_s2, i, 's');
+            } array_2d_1[1] = j;
+            this->sim_colls(dNdt, S_coll.at(array_2d_1), m_s1, m_s1, i, 's'); // collision of same type
 
             for (size_t k = 0; k < num_rb_types; k++) { // sat-rb collision
                 double m_rb2 = curr_cell->m_rb->at(k); // get rocket mass
-                this->sim_colls_satrb(dNdt, RS_coll.at(array<size_t,2>({j,k})), m_s1, i, 's');
-                this->sim_colls_satrb(dNdt, RS_coll.at(array<size_t,2>({j,k})), m_rb2, i, 'r');
+                array_2d_1[1] = k;
+                this->sim_colls_satrb(dNdt, RS_coll.at(array_2d_1), m_s1, i, 's');
+                this->sim_colls_satrb(dNdt, RS_coll.at(array_2d_1), m_rb2, i, 'r');
             }
 
             for (size_t k = 0; k < this->num_L; k++) { // sat-debris collisions
                 double ave_L = pow(10, this->logL_ave->at(k)); // get average L value for this bin
                 double A = find_A(ave_L); // average surface area of the debris
+                array_3d_1[1] = k;
                 for (size_t l = 0; l < this->num_chi; l++) {
                     double ave_AM = pow(10, this->chi_ave->at(l)); // get average debris AM for this bin
-                    double m_d = A/ave_AM;
-                    this->sim_colls(dNdt, NS_coll.at(array<size_t,3>({j,k,l})), m_s1, m_d, i, 's');
+                    double m_d = A/ave_AM; array_3d_1[2] = l;
+                    this->sim_colls(dNdt, NS_coll.at(array_3d_1), m_s1, m_d, i, 's');
                 }
             }
 
@@ -343,20 +349,22 @@ void NCell::dxdt(size_t time, bool upper, Array1D<double> **dSdt, Array1D<double
         } for (size_t j = 0; j < num_rb_types; j++) { // iterate through rb types
             double m_rb1 = curr_cell->m_rb->at(j); // mass of the first rocket
             double C = curr_cell->C_rb->at(j); // current rocket explosion constant
-
+            array_2d_1[0] = j; array_2d_2[1] = j; array_3d_1[0] = j;
             for (size_t k = j+1; k < num_rb_types; k++) { // rb-rb collisions
                 double m_rb2 = curr_cell->m_rb->at(k); // mass of the second rocket
-                this->sim_colls(dNdt, R_coll.at(array<size_t,2>({j,k})) + R_coll.at(array<size_t,2>({k,j})),
-                                m_rb1, m_rb2, i, 'r');
-            } this->sim_colls(dNdt, R_coll.at(array<size_t,2>({j,j})), m_rb1, m_rb1, i, 'r'); // collision of same type
+                array_2d_1[1] = k; array_2d_2[0] = k;
+                this->sim_colls(dNdt, R_coll.at(array_2d_1) + R_coll.at(array_2d_2), m_rb1, m_rb2, i, 'r');
+            } array_2d_1[1] = j;
+            this->sim_colls(dNdt, R_coll.at(array_2d_1), m_rb1, m_rb1, i, 'r'); // collision of same type
 
             for (size_t k = 0; k < this->num_L; k++) { // rb-debris collisions
                 double ave_L = pow(10, this->logL_ave->at(k)); // get average L value for this bin
                 double A = find_A(ave_L); // average surface area of the debris
+                array_3d_1[1] = k;
                 for (size_t l = 0; l < this->num_chi; l++) {
                     double ave_AM = pow(10, this->chi_ave->at(l)); // get average debris AM for this bin
-                    double m_d = A/ave_AM;
-                    this->sim_colls(dNdt, NR_coll.at(array<size_t,3>({j,k,l})), m_rb1, m_d, i, 'r');
+                    double m_d = A/ave_AM; array_3d_1[2] = l;
+                    this->sim_colls(dNdt, NR_coll.at(array_3d_1), m_rb1, m_d, i, 'r');
                 }
             }
             
@@ -364,12 +372,23 @@ void NCell::dxdt(size_t time, bool upper, Array1D<double> **dSdt, Array1D<double
         }
 
         // add on debris lost to collisions
-        for (size_t j = 0; j < this->num_L; j++) {
-            for (size_t k = 0; k < this->num_chi; k++) {
-                for (size_t l = 0; l < num_sat_types; l++) {
-                    dNdt.at(array<size_t,3>({i,j,k})) -= NS_coll.at(array<size_t,3>({l,j,k}));
-                } for (size_t l = 0; l < num_rb_types; l++) {
-                    dNdt.at(array<size_t,3>({i,j,k})) -= NR_coll.at(array<size_t,3>({l,j,k}));
+        array_3d_1[0] = i;
+        for (size_t l = 0; l < num_sat_types; l++) {
+            array_3d_2[0] = l;
+            for (size_t j = 0; j < this->num_L; j++) {
+                array_3d_1[1] = j; array_3d_2[1] = j;
+                for (size_t k = 0; k < this->num_chi; k++) {
+                    array_3d_1[2] = k; array_3d_2[2] = k;
+                    dNdt.at(array_3d_1) -= NS_coll.at(array_3d_2);
+                }
+            }
+        } for (size_t l = 0; l < num_rb_types; l++) {
+            array_3d_2[0] = l;
+            for (size_t j = 0; j < this->num_L; j++) {
+                array_3d_1[1] = j; array_3d_2[1] = j;
+                for (size_t k = 0; k < this->num_chi; k++) {
+                    array_3d_1[2] = k; array_3d_2[2] = k;
+                    dNdt.at(array_3d_1) -= NR_coll.at(array_3d_2);
                 }
             }
         }
@@ -377,6 +396,7 @@ void NCell::dxdt(size_t time, bool upper, Array1D<double> **dSdt, Array1D<double
 
     // go through cells from bottom to top to correct values
     for (size_t i = 0; i < this->num_cells; i++) {
+        array_3d_1[0] = i;
         for (size_t j = 0; j < num_sat_types; j++) {
             dSdt[i]->at(j) += S_in[i]->at(j) - S_in[i+1]->at(j);
             dS_ddt[i]->at(j) += S_din[i+1]->at(j) - S_din[i]->at(j);
@@ -384,8 +404,10 @@ void NCell::dxdt(size_t time, bool upper, Array1D<double> **dSdt, Array1D<double
         } for (size_t j = 0; j < num_rb_types; j++) {
             dRdt[i]->at(j) += R_in[i+1]->at(j) - R_in[i]->at(j);
         } for (size_t j = 0; j < this->num_L; j++) {
+            array_3d_1[1] = j; array_2d_1[0] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                dNdt.at(array<size_t,3>({i,j,k})) += N_in[i+1]->at(array<size_t,2>({j,k})) - N_in[i]->at(array<size_t,2>({j,k}));
+                array_3d_1[2] = k; array_2d_1[1] = k;
+                dNdt.at(array_3d_1) += N_in[i+1]->at(array_2d_1) - N_in[i]->at(array_2d_1);
             }
         }
     }
@@ -445,7 +467,8 @@ void NCell::run_sim_euler(double T, double dt, bool upper) {
             Array1D<double> * S_dnew = new Array1D<double>(0.0, num_sat_types);
             Array1D<double> * D_new = new Array1D<double>(0.0, num_sat_types);
             Array1D<double> * R_new = new Array1D<double>(0.0, num_rb_types);
-            ArrayND<double,2> * N_new = new ArrayND<double,2>(0.0, array<size_t,2>({this->num_L,this->num_chi}));
+            index_2d[0] = this->num_L; index_2d[1] = this->num_chi;
+            ArrayND<double,2> * N_new = new ArrayND<double,2>(0.0, index_2d);
             // calculate new values
             for (size_t j = 0; j < num_sat_types; j++) {
                 S_new->at(j) += curr_cell->S->at(this->time)->at(j) + dSdt[i]->at(j)*dt;
@@ -573,7 +596,8 @@ void NCell::run_sim_precor(double T, double dt_i, double dt_min, double dt_max, 
                 curr_cell->S_d->push_back(new Array1D<double>(num_sat_types));
                 curr_cell->D->push_back(new Array1D<double>(num_sat_types));
                 curr_cell->R->push_back(new Array1D<double>(num_rb_types));
-                curr_cell->N_bins->push_back(new ArrayND<double,2>(array<size_t,2>({this->num_L, this->num_chi})));
+                index_2d[0] = this->num_L; index_2d[1] = this->num_chi;
+                curr_cell->N_bins->push_back(new ArrayND<double,2>(index_2d));
                 curr_cell->C_l->push_back(0); curr_cell->C_nl->push_back(0);
             }
 
@@ -732,7 +756,7 @@ void NCell::sim_colls(ArrayND<double,3> &dNdt, double rate, double m1, double m2
 
     Output(s): None
     */
-
+    array<size_t,3> index_3d = {0,0,0}; array<size_t,4> index_4d = {index,0,0,0};
     if (rate == 0.0) {return;} // just skip everything if you can
     double v_rel = this->cells[index]->v; // collision velocity (km/s)
     double M = calc_M(m1, m2, v_rel); // M factor
@@ -743,9 +767,12 @@ void NCell::sim_colls(ArrayND<double,3> &dNdt, double rate, double m1, double m2
     if (typ == 's') {prob_table = this->sat_coll_prob_tables;} // get right probability table
     else {prob_table = this->rb_coll_prob_tables;}
     for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells to send debris to
+        index_3d[0] = i; index_4d[1] = i;
         for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
+            index_3d[1] = j; index_4d[2] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                dNdt.at(array<size_t,3>({i,j,k})) += N_debris*(prob_table->at(array<size_t,4>({index,i,j,k})));
+                index_3d[2] = k; index_4d[3] = k;
+                dNdt.at(index_3d) += N_debris*(prob_table->at(index_4d));
             }
         }
     }
@@ -765,7 +792,7 @@ void NCell::sim_colls_satrb(ArrayND<double,3> &dNdt, double rate, double m, size
 
     Output(s): None
     */
-
+    array<size_t,3> index_3d = {0,0,0}; array<size_t,4> index_4d = {index,0,0,0};
     if (rate == 0.0) {return;} // just skip everything if you can
     // min and max characteristic lengths
     double Lmin = pow(10.0, this->logL_edges->at(0)); double Lmax = pow(10.0, this->logL_edges->at(this->num_L));
@@ -774,9 +801,12 @@ void NCell::sim_colls_satrb(ArrayND<double,3> &dNdt, double rate, double m, size
     if (typ == 's') {prob_table = this->sat_coll_prob_tables;} // get right probability table
     else {prob_table = this->rb_coll_prob_tables;}
     for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells to send debris to
+        index_3d[0] = i; index_4d[1] = i;
         for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
+            index_3d[1] = j; index_4d[2] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                dNdt.at(array<size_t,3>({i,j,k})) += N_debris*(prob_table->at(array<size_t,4>({index,i,j,k})));
+                index_3d[2] = k; index_4d[3] = k;
+                dNdt.at(index_3d) += N_debris*(prob_table->at(index_4d));
             }
         }
     }
@@ -796,7 +826,7 @@ void NCell::sim_expl(ArrayND<double,3> &dNdt, double rate, double C, size_t inde
 
     Output(s): None
     */
-
+    array<size_t,3> index_3d = {0,0,0}; array<size_t,4> index_4d = {index,0,0,0};
     if (rate == 0.0) {return;} // just skip everything if you can
     // min and max characteristic lengths
     double Lmin = pow(10.0, this->logL_edges->at(0)); double Lmax = pow(10.0, this->logL_edges->at(this->num_L));
@@ -805,9 +835,12 @@ void NCell::sim_expl(ArrayND<double,3> &dNdt, double rate, double C, size_t inde
     if (typ == 's') {prob_table = this->sat_expl_prob_tables;} // get right probability table
     else {prob_table = this->rb_expl_prob_tables;}
     for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells to send debris to
+        index_3d[0] = i; index_4d[1] = i;
         for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
+            index_3d[1] = j; index_4d[2] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                dNdt.at(array<size_t,3>({i,j,k})) += N_debris*(prob_table->at(array<size_t,4>({index,i,j,k})));
+                index_3d[2] = k; index_4d[3] = k;
+                dNdt.at(index_3d) += N_debris*(prob_table->at(index_4d));
             }
         }
     }
@@ -815,7 +848,8 @@ void NCell::sim_expl(ArrayND<double,3> &dNdt, double rate, double C, size_t inde
 
 void NCell::sim_events() {
     // sims all events that need to be run in the system at the current time
-
+    
+    array<size_t,2> index_2d = {0,0}; array<size_t,3> index_3d = {0,0,0};
     // setup arrays to hold changes in debris
     ArrayND<double, 3> dN = ArrayND<double,3>(0.0, array<size_t,3>({this->num_cells,this->num_L,this->num_chi}));
     ArrayND<double, 2> dN_loc = ArrayND<double,2>(array<size_t,2>({this->num_L,this->num_chi})); // for non-collision/explosion sources
@@ -864,9 +898,10 @@ void NCell::sim_events() {
         } for (size_t j = 0; j < num_rb_types; j++) {
             curr_cell->R->at(this->time)->at(j) += dR.at(j);
         } for (size_t j = 0; j < this->num_L; j++) {
+            index_2d[0] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                array<size_t,2> index = {i,j};
-                curr_cell->N_bins->at(this->time)->at(index) += dN_loc.at(index);
+                index_2d[1] = k;
+                curr_cell->N_bins->at(this->time)->at(index_2d) += dN_loc.at(index_2d);
             }
         }
 
@@ -876,11 +911,12 @@ void NCell::sim_events() {
 
     // update with debris from collisions/explosions
     for (size_t i = 0; i < this->num_cells; i++) {
-        Cell * curr_cell = this->cells[i];
+        Cell * curr_cell = this->cells[i]; index_3d[0] = i;
         for (size_t j = 0; j < this->num_L; j++) {
+            index_3d[1] = j; index_2d[0] = j;
             for (size_t k = 0; k < this->num_chi; k++) {
-                array<size_t,3> index = {i,j,k};
-                curr_cell->N_bins->at(this->time)->at(array<size_t,2>({j,k})) += dN.at(index);
+                index_3d[2] = k; index_2d[1] = k;
+                curr_cell->N_bins->at(this->time)->at(index_2d) += dN.at(index_3d);
             }
         }
     }
