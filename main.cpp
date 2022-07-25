@@ -124,7 +124,7 @@ void run_test() {
     NCell test = NCell(filepath, 1000);
     cout << "Running simulation" << endl;
     cout << time(&org_time) << endl;
-    test.run_sim_euler(30.0, 0.001, true);
+    test.run_sim_precor(30.0, 1.0, 0.001, 1.0, 1.0, true);
     cout << time(&dummy)-org_time << endl;
     cout << "Finished simulation" << endl;
     string temp[2] = {string("./"), string("test_resave")};

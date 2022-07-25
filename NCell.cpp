@@ -402,7 +402,6 @@ void NCell::run_sim_euler(double T, double dt, bool upper) {
 
     Output(s): None
     */
-    cout.precision(15);
     this->sim_events(); // events that happen at the start
     // get number of object types
     size_t num_sat_types = this->cells[0]->num_sat_types; size_t num_rb_types = this->cells[0]->num_rb_types;
@@ -420,6 +419,8 @@ void NCell::run_sim_euler(double T, double dt, bool upper) {
         dDdt[i] = new Array1D<double>(num_sat_types);
         dRdt[i] = new Array1D<double>(num_rb_types);
     }
+    array<size_t,2> index_2d = {0,0}; // used for indexing the 2-d arrays
+    array<size_t,3> index_3d = {0,0,0}; // used for indexing the 3-d arrays
 
     while (this->t->at(this->time) < T) {
         // check if we need to update lifetimes
@@ -439,7 +440,7 @@ void NCell::run_sim_euler(double T, double dt, bool upper) {
 
         for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells and update values
             // get current cell and setup new values
-            Cell * curr_cell = this->cells[i];
+            Cell * curr_cell = this->cells[i]; index_3d[0] = i;
             Array1D<double> * S_new = new Array1D<double>(0.0, num_sat_types);
             Array1D<double> * S_dnew = new Array1D<double>(0.0, num_sat_types);
             Array1D<double> * D_new = new Array1D<double>(0.0, num_sat_types);
@@ -453,9 +454,10 @@ void NCell::run_sim_euler(double T, double dt, bool upper) {
             } for (size_t j = 0; j < num_rb_types; j++) {
                 R_new->at(j) += curr_cell->R->at(this->time)->at(j) + dRdt[i]->at(j)*dt;
             } for (size_t j = 0; j < this->num_L; j++) {
+                index_3d[1] = j; index_2d[0] = j;
                 for (size_t k = 0; k < this->num_chi; k++) {
-                    array<size_t, 2> index = {j,k};
-                    N_new->at(index) += curr_cell->N_bins->at(this->time)->at(index) + dNdt.at(array<size_t,3>({i,j,k}))*dt;
+                    index_2d[1] = k; index_3d[2] = k;
+                    N_new->at(index_2d) += curr_cell->N_bins->at(this->time)->at(index_2d) + dNdt.at(index_3d)*dt;
                 }
             }
             // update values
@@ -479,6 +481,240 @@ void NCell::run_sim_euler(double T, double dt, bool upper) {
     }
     delete [] dSdt; delete [] dS_ddt; delete [] dDdt; delete [] dRdt;
     delete [] dC_ldt; delete [] dC_nldt;
+}
+
+void NCell::run_sim_precor(double T, double dt_i, double dt_min, double dt_max, double tolerance, bool upper) {
+    /*
+    simulates the evolution of the debris-satallite system for T years using predictor-corrector model
+
+    Input(s):
+    T : length of the simulation (yr)
+    dt_i : initial timestep used by the simulation (yr)
+    dt_min : minimum time step used by the simulation (yr)
+    dt_max : maximum time step used by simulation (yr)
+    tolerance : tolerance for adaptive time step
+    upper : whether or not to have debris come into the top shell (bool)
+
+    Output(s): None
+
+    Note(s): AB(2) method is used as predictor, Trapezoid method as corrector
+    */
+    bool warning_given = false; // whether or not a warning has been given yet
+    // get additional initial values if needed
+    if (this->time == 0) {this->run_sim_euler(dt_min, dt_min, upper);}
+    // get number of object types
+    size_t num_sat_types = this->cells[0]->num_sat_types; size_t num_rb_types = this->cells[0]->num_rb_types;
+    // setup rate of change arrays
+    Array1D<double> ** dSdt_n = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dSdt_n1 = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dSdt_n2 = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dS_ddt_n = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dS_ddt_n1 = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dS_ddt_n2 = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dDdt_n = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dDdt_n1 = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dDdt_n2 = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dRdt_n = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dRdt_n1 = new Array1D<double>*[this->num_cells];
+    Array1D<double> ** dRdt_n2 = new Array1D<double>*[this->num_cells];
+    ArrayND<double,3> * dNdt_n = new ArrayND<double,3>(0.0, array<size_t,3>({this->num_cells,this->num_L,this->num_chi}));
+    ArrayND<double,3> * dNdt_n1 = new ArrayND<double,3>(0.0, array<size_t,3>({this->num_cells,this->num_L,this->num_chi}));
+    ArrayND<double,3> * dNdt_n2 = new ArrayND<double,3>(0.0, array<size_t,3>({this->num_cells,this->num_L,this->num_chi}));
+    double * dC_ldt_n = new double[this->num_cells];
+    double * dC_ldt_n1 = new double[this->num_cells];
+    double * dC_ldt_n2 = new double[this->num_cells];
+    double * dC_nldt_n = new double[this->num_cells];
+    double * dC_nldt_n1 = new double[this->num_cells];
+    double * dC_nldt_n2 = new double[this->num_cells];
+    for (size_t i = 0; i < this->num_cells; i++) {
+        dSdt_n[i] = new Array1D<double>(0.0, num_sat_types);
+        dSdt_n1[i] = new Array1D<double>(0.0, num_sat_types);
+        dSdt_n2[i] = new Array1D<double>(0.0, num_sat_types);
+        dS_ddt_n[i] = new Array1D<double>(0.0, num_sat_types);
+        dS_ddt_n1[i] = new Array1D<double>(0.0, num_sat_types);
+        dS_ddt_n2[i] = new Array1D<double>(0.0, num_sat_types);
+        dDdt_n[i] = new Array1D<double>(0.0, num_sat_types);
+        dDdt_n1[i] = new Array1D<double>(0.0, num_sat_types);
+        dDdt_n2[i] = new Array1D<double>(0.0, num_sat_types);
+        dRdt_n[i] = new Array1D<double>(0.0, num_rb_types);
+        dRdt_n1[i] = new Array1D<double>(0.0, num_rb_types);
+        dRdt_n2[i] = new Array1D<double>(0.0, num_rb_types);
+        dC_ldt_n[i] = 0.0; dC_nldt_n[i] = 0.0;
+        dC_ldt_n1[i] = 0.0; dC_nldt_n1[i] = 0.0;
+        dC_ldt_n2[i] = 0.0; dC_nldt_n2[i] = 0.0;
+    }
+    // setup variables for re-using memory
+    Array1D<double> ** dSdt_temp; Array1D<double> ** dS_ddt_temp;
+    Array1D<double> ** dDdt_temp; Array1D<double> ** dRdt_temp;
+    ArrayND<double,3> * dNdt_temp; double * dC_ldt_temp; double * dC_nldt_temp;
+    // get previous rate of change values
+    this->update_lifetimes(this->t->at(this->time-1));
+    this->dxdt(this->time-1, upper, dSdt_n, dS_ddt_n, dDdt_n, dRdt_n, *dNdt_n, dC_ldt_n, dC_nldt_n);
+    // get current rate of change values
+    this->update_lifetimes(this->t->at(this->time)); this->lupdate_time = this->time;
+    this->dxdt(this->time, upper, dSdt_n1, dS_ddt_n1, dDdt_n1, dRdt_n1, *dNdt_n1, dC_ldt_n1, dC_nldt_n1);
+    double dt_old = dt_min; // set up old time step variable
+    double dt = dt_i; // setup current time step variable
+    bool updated = false; bool redo = false; // setup variables for redoing steps
+    array<size_t,2> index_2d = {0,0}; // used for indexing the 2-d arrays
+    array<size_t,3> index_3d = {0,0,0}; // used for indexing the 3-d arrays
+
+    while (this->t->at(this->time) < T) { // loop until done
+        if (updated && redo) {this->update_lifetimes(this->t->at(this->time));}
+        else if (updated) {this->lupdate_time = this->time;}
+        redo = false; updated = false;
+
+        // step forwards using AB(2) method
+        for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells
+            Cell * curr_cell = this->cells[i];
+            index_3d[0] = i;
+            if (curr_cell->N_bins->size() < this->time + 2) { // check if the arrays need to be lengthened
+                curr_cell->S->push_back(new Array1D<double>(num_sat_types)); // lengthen arrays
+                curr_cell->S_d->push_back(new Array1D<double>(num_sat_types));
+                curr_cell->D->push_back(new Array1D<double>(num_sat_types));
+                curr_cell->R->push_back(new Array1D<double>(num_rb_types));
+                curr_cell->N_bins->push_back(new ArrayND<double,2>(array<size_t,2>({this->num_L, this->num_chi})));
+                curr_cell->C_l->push_back(0); curr_cell->C_nl->push_back(0);
+            }
+
+            // update values
+            for (size_t j = 0; j < num_sat_types; j++) {
+                curr_cell->S->at(this->time+1)->at(j) = curr_cell->S->at(this->time)->at(j) + 0.5*dt*((2.0+dt/dt_old)*(dSdt_n1[i]->at(j))-(dt/dt_old)*(dSdt_n[i]->at(j)));
+                curr_cell->S_d->at(this->time+1)->at(j) = curr_cell->S_d->at(this->time)->at(j) + 0.5*dt*((2.0+dt/dt_old)*(dS_ddt_n1[i]->at(j))-(dt/dt_old)*(dS_ddt_n[i]->at(j)));
+                curr_cell->D->at(this->time+1)->at(j) = curr_cell->D->at(this->time)->at(j) + 0.5*dt*((2.0+dt/dt_old)*(dDdt_n1[i]->at(j))-(dt/dt_old)*(dDdt_n[i]->at(j)));
+            } for (size_t j = 0; j < num_rb_types; j++) {
+                curr_cell->R->at(this->time+1)->at(j) = curr_cell->R->at(this->time)->at(j) + 0.5*dt*((2.0+dt/dt_old)*(dRdt_n1[i]->at(j))-(dt/dt_old)*(dRdt_n[i]->at(j)));
+            } for (size_t j = 0; j < this->num_L; j++) {
+                index_2d[0] = j; index_3d[1] = j;
+                for (size_t k = 0; k < this->num_chi; k++) {
+                    index_2d[1] = k; index_3d[2] = k;
+                    curr_cell->N_bins->at(this->time+1)->at(index_2d) = curr_cell->N_bins->at(this->time)->at(index_2d) + 0.5*dt*((2.0+dt/dt_old)*(dNdt_n1->at(index_3d))-(dt/dt_old)*(dNdt_n->at(index_3d)));
+                }
+            }
+            curr_cell->C_l->at(this->time+1) = curr_cell->C_l->at(this->time) + 0.5*dt*((2.0+dt/dt_old)*(dC_ldt_n1[i])-(dt/dt_old)*(dC_ldt_n[i]));
+            curr_cell->C_nl->at(this->time+1) = curr_cell->C_nl->at(this->time) + 0.5*dt*((2.0+dt/dt_old)*(dC_nldt_n1[i])-(dt/dt_old)*(dC_nldt_n[i]));
+        }
+
+        // get predicted rate of change from AB(2) method prediction
+        if (this->t->at(this->time)+dt-this->t->at(this->lupdate_time) >= this->update_period) {
+            this->update_lifetimes(this->t->at(this->time)+dt); // update lifetimes if needed
+            updated = true;
+        }
+        this->dxdt(this->time+1, upper, dSdt_n2, dS_ddt_n2, dDdt_n2, dRdt_n2, *dNdt_n2, dC_ldt_n2, dC_nldt_n2);
+        double epsilon = 0; // setup variable for size step checking
+        
+        //re-do step using Trapezoid method
+        for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells and update values
+            Cell * curr_cell = this->cells[i];
+            index_3d[0] = i;
+            // get old predicted values
+            Array1D<double> old_S = Array1D<double>(*curr_cell->S->at(this->time+1));
+            Array1D<double> old_S_d = Array1D<double>(*curr_cell->S_d->at(this->time+1));
+            Array1D<double> old_D = Array1D<double>(*curr_cell->D->at(this->time+1));
+            Array1D<double> old_R = Array1D<double>(*curr_cell->R->at(this->time+1));
+            ArrayND<double,2> old_N = ArrayND<double,2>(*curr_cell->N_bins->at(this->time+1));
+            // update epsilon and values
+            for (size_t j = 0; j < num_sat_types; j++) {
+                curr_cell->S->at(this->time+1)->at(j) = curr_cell->S->at(this->time)->at(j) + 0.5*(dSdt_n2[i]->at(j)+dSdt_n1[i]->at(j))*dt;
+                if (curr_cell->S->at(this->time)->at(j) != 0) {
+                    epsilon = max(abs((1.0/3.0)*(dt/(dt+dt_old))*(curr_cell->S->at(this->time+1)->at(j)-old_S.at(j))), epsilon);
+                }
+                curr_cell->S_d->at(this->time+1)->at(j) = curr_cell->S_d->at(this->time)->at(j) + 0.5*(dS_ddt_n2[i]->at(j)+dS_ddt_n1[i]->at(j))*dt;
+                if (curr_cell->S_d->at(this->time)->at(j) != 0) {
+                    epsilon = max(abs((1.0/3.0)*(dt/(dt+dt_old))*(curr_cell->S_d->at(this->time+1)->at(j)-old_S_d.at(j))), epsilon);
+                }
+                curr_cell->D->at(this->time+1)->at(j) = curr_cell->D->at(this->time)->at(j) + 0.5*(dDdt_n2[i]->at(j)+dDdt_n1[i]->at(j))*dt;
+                if (curr_cell->D->at(this->time)->at(j) != 0) {
+                    epsilon = max(abs((1.0/3.0)*(dt/(dt+dt_old))*(curr_cell->D->at(this->time+1)->at(j)-old_D.at(j))), epsilon);
+                }
+            } for (size_t j = 0; j < num_rb_types; j++) {
+                curr_cell->R->at(this->time+1)->at(j) = curr_cell->R->at(this->time)->at(j) + 0.5*(dRdt_n2[i]->at(j)+dRdt_n1[i]->at(j))*dt;
+                if (curr_cell->R->at(this->time)->at(j) != 0) {
+                    epsilon = max(abs((1.0/3.0)*(dt/(dt+dt_old))*(curr_cell->R->at(this->time+1)->at(j)-old_R.at(j))), epsilon);
+                }
+            } for (size_t j = 0; j < this->num_L; j++) {
+                index_2d[0] = j; index_3d[1] = j;
+                for (size_t k = 0; k < this->num_chi; k++) {
+                    index_2d[1] = k; index_3d[2] = k;
+                    curr_cell->N_bins->at(this->time+1)->at(index_2d) = curr_cell->N_bins->at(this->time)->at(index_2d) + 0.5*(dNdt_n2->at(index_3d)+dNdt_n1->at(index_3d))*dt;
+                    if (curr_cell->N_bins->at(this->time)->at(index_2d) != 0) {
+                        epsilon = max(abs((1.0/3.0)*(dt/(dt+dt_old))*(curr_cell->N_bins->at(this->time+1)->at(index_2d)-old_N.at(index_2d))), epsilon);
+                    }
+                }
+            }
+            // we don't really care about the accuracy of updated collision values
+            curr_cell->C_l->at(this->time+1) = curr_cell->C_l->at(this->time) + 0.5*(dC_ldt_n2[i]+dC_ldt_n1[i])*dt;
+            curr_cell->C_nl->at(this->time+1) = curr_cell->C_nl->at(this->time) + 0.5*(dC_nldt_n2[i]+dC_nldt_n1[i])*dt;
+        }
+
+        // update step size, check if calculation needs to be re-done
+        if (epsilon > tolerance) {redo = true;}
+        double new_dt;
+        if (epsilon == 0) {
+            new_dt = dt_max;
+        } else {
+            new_dt = min(dt*cbrt(tolerance/epsilon), dt_max);
+        }
+        if (dt <= new_dt) {redo = false;} // needed as a workaround to a precision issue
+        if (redo) {
+            if (dt <= dt_min) {
+                if (!warning_given) {
+                    cout << "WARNING : System may be too stiff to integrate" << endl;
+                    warning_given = true;
+                }
+                redo = false; new_dt = dt_min;
+            } else {
+                dt = new_dt;
+                for (size_t i = 0; i < this->num_cells; i++) {
+                    dSdt_n2[i]->zero(); dS_ddt_n2[i]->zero(); dDdt_n2[i]->zero(); dRdt_n2[i]->zero();
+                    dC_ldt_n2[i] = 0.0; dC_nldt_n2[i] = 0.0;
+                } dNdt_n2->zero();
+                continue;
+            }
+        }
+
+        // update time
+        this->t->push_back(this->t->at(this->time) + dt); this->time++;
+        dt_old = dt; dt = new_dt;
+        // run events
+        this->sim_events();
+        // this is done to re-use memory
+        dSdt_temp = dSdt_n; dS_ddt_temp = dS_ddt_n; dDdt_temp = dDdt_n; dRdt_temp = dRdt_n;
+        dNdt_temp = dNdt_n; dC_ldt_temp = dC_ldt_n; dC_nldt_temp = dC_nldt_n;
+        // update which are the old and new rates of change
+        dSdt_n = dSdt_n1; dS_ddt_n = dS_ddt_n1; dDdt_n = dDdt_n1; dRdt_n = dRdt_n1;
+        dNdt_n = dNdt_n1; dC_ldt_n = dC_ldt_n1; dC_nldt_n = dC_nldt_n1;
+        dSdt_n1 = dSdt_n2; dS_ddt_n1 = dS_ddt_n2; dDdt_n1 = dDdt_n2; dRdt_n1 = dRdt_n2;
+        dNdt_n1 = dNdt_n2; dC_ldt_n1 = dC_ldt_n2; dC_nldt_n1 = dC_nldt_n2;
+        // update current rates of change
+        for (size_t i = 0; i < this->num_cells; i++) {
+            dSdt_n1[i]->zero(); dS_ddt_n1[i]->zero(); dDdt_n1[i]->zero(); dRdt_n1[i]->zero();
+            dC_ldt_n1[i] = 0.0; dC_nldt_n1[i] = 0.0;
+        } dNdt_n1->zero();
+        this->dxdt(this->time, upper, dSdt_n1, dS_ddt_n1, dDdt_n1, dRdt_n1, *dNdt_n1, dC_ldt_n1, dC_nldt_n1);
+        // reset the arrays for n2
+        dSdt_n2 = dSdt_temp; dS_ddt_n2 = dS_ddt_temp; dDdt_n2 = dDdt_temp; dRdt_n2 = dRdt_temp;
+        dNdt_n2 = dNdt_temp; dC_ldt_n2 = dC_ldt_temp; dC_nldt_n2 = dC_nldt_temp;
+        for (size_t i = 0; i < this->num_cells; i++) {
+            dSdt_n2[i]->zero(); dS_ddt_n2[i]->zero(); dDdt_n2[i]->zero(); dRdt_n2[i]->zero();
+            dC_ldt_n2[i] = 0.0; dC_nldt_n2[i] = 0.0;
+        } dNdt_n2->zero();
+    }
+    // clean up memory
+    for (size_t i = 0; i < this->num_cells; i++) {
+        delete dSdt_n[i]; delete dSdt_n1[i]; delete dSdt_n2[i];
+        delete dS_ddt_n[i]; delete dS_ddt_n1[i]; delete dS_ddt_n2[i];
+        delete dDdt_n[i]; delete dDdt_n1[i]; delete dDdt_n2[i];
+        delete dRdt_n[i]; delete dRdt_n1[i]; delete dRdt_n2[i];
+    }
+    
+    delete [] dSdt_n; delete [] dSdt_n1; delete [] dSdt_n2;
+    delete [] dS_ddt_n; delete [] dS_ddt_n1; delete [] dS_ddt_n2;
+    delete [] dDdt_n; delete [] dDdt_n1; delete [] dDdt_n2;
+    delete [] dRdt_n; delete [] dRdt_n1; delete [] dRdt_n2;
+    delete dNdt_n; delete dNdt_n1; delete dNdt_n2;
+    delete [] dC_ldt_n; delete [] dC_ldt_n1; delete [] dC_ldt_n2;
+    delete [] dC_nldt_n; delete [] dC_nldt_n1; delete [] dC_nldt_n2;
 }
 
 void NCell::sim_colls(ArrayND<double,3> &dNdt, double rate, double m1, double m2, size_t index, char typ) {
