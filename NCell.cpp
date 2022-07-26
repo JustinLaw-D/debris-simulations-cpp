@@ -110,22 +110,18 @@ void NCell::save(string &filepath, string &name, double gap) {
     gap : smallest gap in time between data points saved to accept (yr)
 
     Output(s): None
+
+    Note(s): overwrites any saved objects with the same name
     */
     
     // create directory
     string true_path = filepath + name + string("/"); string file_path;
-    bool exists;
     try {
-        exists = fs::create_directory(fs::path(true_path)); // make the folder representing the object
+        fs::create_directory(fs::path(true_path)); // make the folder representing the object
     } catch (const std::exception& e) {
         cout << "From NCell save " << e.what();
         return;
     }
-    /*
-    if (!exists) {
-        cout << "NCell save failed : directory already exists" << endl;
-        return;
-    }*/
 
     // write parameters
     ofstream param_file; // file containing basic NCell parameters

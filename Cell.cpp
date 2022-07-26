@@ -178,18 +178,13 @@ void Cell::save(string &filepath, Array1D<bool> &filter, size_t filter_len) {
     */
     
     // create directory
-    bool exists; string file_path;
+    string file_path;
     try {
-        exists = fs::create_directory(fs::path(filepath)); // make the folder representing the object
+        fs::create_directory(fs::path(filepath)); // make the folder representing the object
     } catch (const std::exception& e) {
         cout << "From Cell save " << e.what();
         return;
     }
-    /*
-    if (!exists) {
-        cout << "Cell save failed : directory already exists" << endl;
-        return;
-    }*/
 
     // write parameters
     ofstream param_file; // file containing basic Cell parameters
@@ -216,16 +211,11 @@ void Cell::save(string &filepath, Array1D<bool> &filter, size_t filter_len) {
     // write N_bins values
     string bin_path = filepath + "N_bins/";
     try {
-        exists = fs::create_directory(fs::path(bin_path)); // make the folder representing the list
+        fs::create_directory(fs::path(bin_path)); // make the folder representing the list
     } catch (const std::exception& e) {
         cout << "From N_bins save " << e.what();
         return;
     }
-    /*
-    if (!exists) {
-        cout << "N_bins save failed : directory already exists" << endl;
-        return;
-    }*/
     size_t index = 0;
     for (size_t i = 0; i < this->N_bins->size(); i++) {
         if (filter.at(i)) {
@@ -312,18 +302,13 @@ void Cell::save_sat(const string &filepath, size_t i, Array1D<bool> &filter, siz
     Output(s): None
     */
     // create directory
-    bool exists; string file_path;
+    string file_path;
     try {
-        exists = fs::create_directory(fs::path(filepath)); // make the folder representing the object
+        fs::create_directory(fs::path(filepath)); // make the folder representing the object
     } catch (const std::exception& e) {
         cout << "From sat save " << e.what();
         return;
     }
-    /*
-    if (!exists) {
-        cout << "sat save failed : directory already exists" << endl;
-        return;
-    }*/
 
     // write parameters
     ofstream param_file; // file containing basic Cell parameters
@@ -420,18 +405,13 @@ void Cell::save_rb(const string &filepath, size_t i, Array1D<bool> &filter, size
     Output(s): None
     */
     // create directory
-    bool exists; string file_path;
+    string file_path;
     try {
-        exists = fs::create_directory(fs::path(filepath)); // make the folder representing the object
+        fs::create_directory(fs::path(filepath)); // make the folder representing the object
     } catch (const std::exception& e) {
         cout << "From rb save " << e.what();
         return;
     }
-    /*
-    if (!exists) {
-        cout << "rb save failed : directory already exists" << endl;
-        return;
-    }*/
 
     // write parameters
     ofstream param_file; // file containing basic Cell parameters
