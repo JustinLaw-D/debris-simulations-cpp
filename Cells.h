@@ -69,11 +69,6 @@ class Cell
         vector<double> * C_nl; // total number of non-catestrophic collisions in each time step
 
     public:
-        // full constructor
-        Cell(Satellite * satellites, RocketBody * rockets, ArrayND<double,2> * N_i, size_t num_sat_types,
-             size_t num_rb_types, Array1D<double> * logL_edges, size_t num_L, Array1D<double> * chi_edges, size_t num_chi,
-             vector<Event *> * event_list, size_t num_events, double alt, double dh, Array1D<double> * tau_N, double v,
-             vector<double> * C_l, vector<double> * C_nl);
         Cell(const string &filepath); // load cell from file
         void save(string &filepath, Array1D<bool> &filter, size_t filter_len); // function for saving data
         void add_event(Event * event); // adds event to the cell
