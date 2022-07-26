@@ -121,10 +121,11 @@ void NCell::save(string &filepath, string &name, double gap) {
         cout << "From NCell save " << e.what();
         return;
     }
+    /*
     if (!exists) {
         cout << "NCell save failed : directory already exists" << endl;
         return;
-    }
+    }*/
 
     // write parameters
     ofstream param_file; // file containing basic NCell parameters
