@@ -441,7 +441,7 @@ bool ArrayND<T, N>::save(string &filepath) {
         while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
         header_len = tot_len - 10;
         // pad with spaces for alignment
-        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        for (unsigned short i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
         header.push_back('\n');
         // write the header to the file
         data_file.write(waste, 8); data_file.write((char *)&header_len, 2);
@@ -685,7 +685,7 @@ bool Array1D<T>::save(string &filepath) {
         while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
         header_len = tot_len - 10;
         // pad with spaces for alignment
-        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        for (unsigned short i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
         header.push_back('\n');
         // write the header to the file
         data_file.write(waste, 8); data_file.write((char *)&header_len, 2);
@@ -869,7 +869,7 @@ bool save_vec(string &filepath, vector<T> * vec, Array1D<bool> &filter, size_t l
         while (tot_len < non_padded_len + 8 + 2 + 1) {tot_len += 64;}
         header_len = tot_len - 10;
         // pad with spaces for alignment
-        for (size_t i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
+        for (unsigned short i = non_padded_len; i < header_len - 1; i++) {header.push_back(' ');}
         header.push_back('\n');
         // write the header to the file
         data_file.write(waste, 8); data_file.write((char *)&header_len, 2);

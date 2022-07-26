@@ -1,0 +1,5 @@
+make --dry-run --keep-going --print-directory
+make: Entering directory '/home/justi_6044/Summer_2022/debris-simulations-cpp'
+g++ -o simulation main.o NCell.o Cell.o ObjectsEvents.o BreakupModel.o AtmosphericDecayModels.o -g -Wall -lstdc++fs
+make: Leaving directory '/home/justi_6044/Summer_2022/debris-simulations-cpp'
+ 
