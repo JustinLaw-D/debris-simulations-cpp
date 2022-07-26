@@ -1,6 +1,6 @@
 # makefile for simulations
 CC = g++
-INCLUDEPATH =
+INCLUDEPATH = /store/lawren17/debris-simulations-cpp
 CFLAGS  = -g -Wall -lstdc++fs -I$(INCLUDEPATH)
 NAME = a.out # name of the output file
 TARGET = main # name of the file with int main()
