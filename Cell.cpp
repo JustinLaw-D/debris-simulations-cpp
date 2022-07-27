@@ -219,7 +219,7 @@ void Cell::save(string &filepath, Array1D<bool> &filter, size_t filter_len) {
     size_t index = 0;
     for (size_t i = 0; i < this->N_bins->size(); i++) {
         if (filter.at(i)) {
-            file_path = bin_path + to_string(index); this->N_bins->at(i)->save(file_path);
+            file_path = bin_path + to_string(index) + ".npy"; this->N_bins->at(i)->save(file_path);
             index++;
         }
     }

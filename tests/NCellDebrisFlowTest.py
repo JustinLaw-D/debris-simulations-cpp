@@ -20,5 +20,5 @@ N_i = np.zeros(len(alts), dtype=np.double)
 N_i[-1] = 10000
 target_alts = [500]
 lam = [0]
-atmosphere = NCell(S_i, S_di, D_i, N_i, target_alts, alt_edges, lam, tau_do=tau_do)
+atmosphere = NCell(S_i, S_di, D_i, N_i, target_alts, alt_edges, lam)
 atmosphere.save('./data/', "NCellDebrisFlowTest")

@@ -3,7 +3,7 @@ sys.path.append('./../')
 
 from NCellShell import NCell
  
-atmosphere = NCell.load("./data/NCellDeorbitFlowTest/")
+atmosphere = NCell.load("./data/NCellDebrisFlowTest/")
 t = atmosphere.get_t()
 T = t[-1]
 N = atmosphere.get_N()

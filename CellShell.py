@@ -136,7 +136,7 @@ class Cell:
         i = 0
         while True:
             try:
-                N_bin = np.load(bin_path + str(i))
+                N_bin = np.load(bin_path + str(i) + '.npy')
                 cell.N_bins.append(N_bin)
             except OSError:
                 break
