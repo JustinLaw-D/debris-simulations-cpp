@@ -111,8 +111,8 @@ class NCell:
         if tau_do is None:
             tau_do = [None]*len(S)
 
-        self.alts = np.zeros(len(alt_edges)-1)
-        self.dh = np.zeros(self.alts.shape)
+        self.alts = np.zeros(len(alt_edges)-1, dtype=np.double)
+        self.dh = np.zeros(self.alts.shape, dtype=np.double)
         for i in range(len(alt_edges)-1):
             self.dh[i] = alt_edges[i+1]-alt_edges[i]
             self.alts[i] = (alt_edges[i]+alt_edges[i+1])/2
@@ -120,11 +120,11 @@ class NCell:
         self.num_chi = num_chi
         self.time = 0 # index of current time step
         self.lupdate_time = 0 # index of last time drag lifetimes were updated
-        self.t = [0] # list of times traversed
+        self.t = [0.0] # list of times traversed
         self.cells = [] # start list of cells
         # generate bins for log10(L), chi
-        self.logL_edges = np.linspace(np.log10(L_min), np.log10(L_max), num=num_L+1)
-        self.chi_edges = np.linspace(chi_min, chi_max, num=num_chi+1)
+        self.logL_edges = np.linspace(np.log10(L_min), np.log10(L_max), num=num_L+1, dtype=np.double)
+        self.chi_edges = np.linspace(chi_min, chi_max, num=num_chi+1, dtype=np.double)
         self.update_period = update_period
         self.min_lifetime = min_lifetime
 
@@ -182,19 +182,19 @@ class NCell:
                 if up_time[i][j] is None:
                     up_time[i][j] = 1/10
                 if del_t[i][j] is None:
-                    del_t[i][j] = 5
+                    del_t[i][j] = 5.0
                 if fail_t[i][j] is None:
-                    fail_t[i][j] = 1000
+                    fail_t[i][j] = 1000.0
                 if expl_rate_L[j] is None:
-                    expl_rate_L[j] = 0
+                    expl_rate_L[j] = 0.0
                 if expl_rate_D[j] is None:
                     expl_rate_D[j] = expl_rate_L[j]
                 if C_sat[j] is None:
-                    C_sat[j] = 1
+                    C_sat[j] = 1.0
                 if sigma_sat[j] is None:
-                    sigma_sat[j] = 10
+                    sigma_sat[j] = 10.0
                 if alphaS[i][j] is None:
-                    alphaS[i][j] = 0
+                    alphaS[i][j] = 0.0
                 if alphaN[i][j] is None:
                     alphaN[i][j] = 0.2
                 if alphaD[i][j] is None:
@@ -204,13 +204,13 @@ class NCell:
                 if P[i][j] is None:
                     P[i][j] = 0.95
                 if m_s[j] is None:
-                    m_s[j] = 250
+                    m_s[j] = 250.0
                 if AM_sat[j] is None:
                     AM_sat[j] = 1/(20*2.2)
 
                 # compute atmospheric drag lifetime for satallites in the shell
                 if tau_do[i][j] is None:
-                    tau_do[i][j] = 0 # this value is used to communicate the value not being set
+                    tau_do[i][j] = 0.0 # this value is used to communicate the value not being set
                 sat = Satellite(S[i][j], S_d[i][j], D[i][j], m_s[j], sigma_sat[j], lam[j], del_t[i][j],
                                 tau_do[i][j], target_alts[j], up_time[i][j], fail_t[i][j], (alphaS[i][j], alphaD[i][j],
                                 alphaN[i][j], alphaR[i][j]), P[i][j], AM_sat[j], C_sat[j], expl_rate_L[j], expl_rate_D[j])
@@ -222,15 +222,15 @@ class NCell:
                 
                 # convert Nones to default values
                 if lam_rb[i][j] is None:
-                    lam_rb[i][j] = 0
+                    lam_rb[i][j] = 0.0
                 if expl_rate_R[j] is None:
-                    expl_rate_R[j] = 0
+                    expl_rate_R[j] = 0.0
                 if C_rb[j] is None:
-                    C_rb[j] = 1
+                    C_rb[j] = 1.0
                 if sigma_rb[j] is None:
-                    sigma_rb[j] = 10
+                    sigma_rb[j] = 10.0
                 if m_rb[j] is None:
-                    m_rb[j] = 250
+                    m_rb[j] = 250.0
                 if AM_rb[j] is None:
                     AM_rb[j] = 1/(20*2.2)
 

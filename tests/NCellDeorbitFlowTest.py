@@ -16,11 +16,10 @@ for i in range(len(alts)):
     S_i.append([0])
     S_di.append([0])
     D_i.append([0])
-    tau_do.append([10])
+    tau_do.append([10.0])
 N_i = np.zeros(len(alts), dtype=np.int64)
 S_di[-1][0] = 100
 target_alts = [500]
 lam = [0]
-T = 30
 atmosphere = NCell(S_i, S_di, D_i, N_i, target_alts, alt_edges, lam, tau_do=tau_do)
-atmosphere.save('./data/', "NCellDeorbitFlowTest", gap=0, force=True)
+atmosphere.save('./data/', "NCellDeorbitFlowTest")

@@ -40,9 +40,9 @@ class Satellite:
         Note(s): preforms no validity checks on given values
         '''
 
-        self.S = [S_i]
-        self.S_d = [S_di]
-        self.D = [D_i]
+        self.S = [float(S_i)]
+        self.S_d = [float(S_di)]
+        self.D = [float(D_i)]
         self.m = m
         self.sigma = sigma
         self.lam = lam
@@ -140,7 +140,7 @@ class RocketBody:
         Note(s): preforms no validity checks on given values
         '''
 
-        self.num = [num]
+        self.num = [float(num)]
         self.m = m
         self.sigma = sigma
         self.lam = lam

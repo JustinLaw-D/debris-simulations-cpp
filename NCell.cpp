@@ -71,6 +71,7 @@ NCell::NCell(string &filepath, size_t num_dir) {
     for (size_t i = 0; i < this->num_cells; i++) {
         this->cells[i] = new Cell(filepath + "cell" + to_string(i) + "/");
     }
+
     // set initial N table for debris decaying into top cell
     this->N_upper_init = new ArrayND<double, 2>(*this->cells[this->num_cells-1]->N_bins->at(0));
 
@@ -864,11 +865,11 @@ void NCell::sim_events() {
         vector<Coll> coll_list = vector<Coll>();
         vector<Expl> expl_list = vector<Expl>();
         // get current values
-        Array1D<double> * S = curr_cell->S->at(i);
-        Array1D<double> * S_d = curr_cell->S_d->at(i);
-        Array1D<double> * D = curr_cell->D->at(i);
-        Array1D<double> * R = curr_cell->R->at(i);
-        ArrayND<double,2> * N = curr_cell->N_bins->at(i);
+        Array1D<double> * S = curr_cell->S->at(this->time);
+        Array1D<double> * S_d = curr_cell->S_d->at(this->time);
+        Array1D<double> * D = curr_cell->D->at(this->time);
+        Array1D<double> * R = curr_cell->R->at(this->time);
+        ArrayND<double,2> * N = curr_cell->N_bins->at(this->time);
         
         for (size_t j = 0; j < curr_cell->num_events; j++) { // iterate through events
             Event * event = curr_cell->event_list->at(j); // get current event

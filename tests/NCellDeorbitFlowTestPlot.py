@@ -16,7 +16,7 @@ ax1.set_ylabel('log(number)')
 ax1.set_yscale('log')
 for i in range(0, len(S_d)):
     ax1.plot(t, S_d[i][0], label='SD'+str(i))
-ax1.set_ylim(1, 1e4)
+ax1.set_ylim(1, 1e2)
 ax1.set_xlim(0,T)
 ax1.legend()
 
