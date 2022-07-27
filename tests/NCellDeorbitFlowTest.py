@@ -17,7 +17,7 @@ for i in range(len(alts)):
     S_di.append([0])
     D_i.append([0])
     tau_do.append([10.0])
-N_i = np.zeros(len(alts), dtype=np.int64)
+N_i = np.zeros(len(alts), dtype=np.double)
 S_di[-1][0] = 100
 target_alts = [500]
 lam = [0]
