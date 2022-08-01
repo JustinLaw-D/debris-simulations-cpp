@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+#include <random>
 #include <experimental/filesystem>
 #include "ObjectsEvents.h"
 #include "Arrays.h"
@@ -43,7 +44,8 @@ NCell::NCell(string &filepath, size_t num_dir) {
         istringstream num_L_temp(row[0]); // need to make these into string streams to convert
         istringstream num_chi_temp(row[1]);
         istringstream num_cell_temp(row[2]);
-        num_L_temp >> this->num_L; num_chi_temp >> this->num_chi; num_cell_temp >> this->num_cells;
+        istringstream seed_temp(row[5]);
+        num_L_temp >> this->num_L; num_chi_temp >> this->num_chi; num_cell_temp >> this->num_cells; seed_temp >> this->seed;
         this->update_period = stod(row[3]);
         this->min_lifetime = stod(row[4]);
     } else {
@@ -80,11 +82,10 @@ NCell::NCell(string &filepath, size_t num_dir) {
     this->rb_coll_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
     this->sat_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
     this->rb_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
+    mt19937_64 generator(this->seed); // initialize PRNG engine
     for (size_t i = 0; i < this->num_cells; i++) {
-        this->calc_prob_table(this->sat_coll_prob_tables, i, 'c', 's', num_dir);
-        this->calc_prob_table(this->rb_coll_prob_tables, i, 'c', 'r', num_dir);
-        this->calc_prob_table(this->sat_expl_prob_tables, i, 'e', 's', num_dir);
-        this->calc_prob_table(this->rb_expl_prob_tables, i, 'e', 'r', num_dir);
+        this->calc_prob_tables(this->sat_coll_prob_tables, this->rb_coll_prob_tables, i, 'c', num_dir, generator);
+        this->calc_prob_tables(this->sat_expl_prob_tables, this->rb_expl_prob_tables, i, 'e', num_dir, generator);
     }
 
     // calculate atmospheric decay lifetimes
@@ -132,7 +133,8 @@ void NCell::save(string &filepath, string &name, double gap) {
         param_file << "\"" << to_string(this->num_chi) << "\"" << ",";
         param_file << "\"" << to_string(this->num_cells) << "\"" << ",";
         param_file << "\"" << to_string(this->update_period) << "\"" << ",";
-        param_file << "\"" << to_string(this->min_lifetime) << "\"";
+        param_file << "\"" << to_string(this->min_lifetime) << "\"" << ",";
+        param_file << "\"" << to_string(this->seed) << "\"";
     } else {
         throw invalid_argument("NCell params.csv file could not be opened");
     }
@@ -166,16 +168,18 @@ void NCell::save(string &filepath, string &name, double gap) {
 
 }
 
-void NCell::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, char ttyp, size_t num_dir) {
+void NCell::calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> * table_rb, size_t indx, char etyp, size_t num_dir,
+                             mt19937_64 &generator) {
     /*
-    calculates probability table for explosion/collision debris generation in the system
+    calculates probability tables for explosion/collision debris generation in the system
 
     Input(s):
-    table : probability table to fill
+    table_sat : probability table to fill for satellite target
+    table_rb : probability table to fill for rocket body target
     indx : index of the cell to calculate probability table for
     etyp : event type, either collision ('c') or explosion ('e')
-    ttyp : target object type, either satellite ('s') or rocket body ('r')
-    num_dir : number of random directions to sample (minimum 2)
+    num_dir : number of random directions to sample
+    generator : PRNG engine
 
     Output(s): None
 
@@ -187,20 +191,25 @@ void NCell::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, 
     double L_max = pow(10.0, this->logL_edges->at(this->num_L));
     double chi_min = this->chi_edges->at(0);
     double chi_max = this->chi_edges->at(this->num_chi);
-    double * phi = new double[num_dir]; // random directions
-    double * theta = new double[num_dir];
-    double P_temp_theta; // used to hold cummulative probability generated for theta
-    for (size_t i = 0; i < num_dir; i++) {
-        phi[i] = static_cast<double>(i)*2.0*M_PI/(static_cast<double>(num_dir)-1.0);
-        P_temp_theta = static_cast<double>(i)/(static_cast<double>(num_dir)-1.0);
-        theta[i] = acos(1.0-2.0*P_temp_theta);
-    }
     for (size_t i = 0; i < this->num_cells; i++) { // iterate through cells
         Cell * curr_cell = (this->cells)[i];
         double alt_min = curr_cell->alt - curr_cell->dh/2.0; // in km
         double alt_max = curr_cell->alt + curr_cell->dh/2.0;
         double v_min2 = G*Me*(2.0/((Re + r)*1000.0) - 1.0/((Re + alt_min)*1000.0)); // minimum velocity squared (m/s)
         double v_max2 = G*Me*(2.0/((Re + r)*1000.0) - 1.0/((Re + alt_max)*1000.0)); // maximum velocity squared (m/s)
+        Array1D<double> vprime_probs = Array1D<double>(0.0, this->num_chi); // holds probabilities for the vprime_cdf distribution
+        uniform_real_distribution<double> distribution(0.0, 1.0); // standard distribution
+        for (size_t j = 0; j < this->num_chi; j++) { // iterate through to fill vprime_cdf
+            double sum = 0.0; // sum of all directions
+            double theta = 0.0; double phi = 0.0; // random directions
+            for (size_t k = 0; k < num_dir; k++) { // perform Monte Carlo integration
+                theta = distribution(generator)*M_PI; phi = distribution(generator)*2.0*M_PI; // get random direction
+                if ((v_min2 < 0.0) && (v_max2 < 0.0)) {sum += 0.0;}
+                else if (v_min2 < 0.0) {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(k), etyp);}
+                else {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(k), etyp) - vprime_cdf(sqrt(v_min2), v0, theta, phi, this->chi_ave->at(k), etyp);}
+            }
+            vprime_probs.at(j) = sum/num_dir;
+        }
         for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
             double bin_bot_L = this->logL_edges->at(j);
             double bin_top_L = this->logL_edges->at(j+1);
@@ -211,14 +220,8 @@ void NCell::calc_prob_table(ArrayND<double, 4> * table, size_t indx, char etyp, 
                 double bin_bot_chi = this->chi_edges->at(k);
                 double bin_top_chi = this->chi_edges->at(k+1);
                 // total probability of being in this bin
-                double curr_prob = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, ttyp) - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, ttyp));
-                double sum = 0.0; // total of all random directions sampled
-                for (size_t l = 0; l < num_dir; l++) { // sample random directions
-                    if ((v_min2 < 0.0) && (v_max2 < 0.0)) {sum += 0.0;}
-                    else if (v_min2 < 0.0) {sum += curr_prob*(vprime_cdf(sqrt(v_max2), v0, theta[l], phi[l], this->chi_ave->at(k), etyp));}
-                    else {sum += curr_prob*(vprime_cdf(sqrt(v_max2), v0, theta[l], phi[l], this->chi_ave->at(k), etyp) - vprime_cdf(sqrt(v_min2), v0, theta[l], phi[l], this->chi_ave->at(k), etyp));}
-                }
-                table->at(array<size_t, 4>({indx, i, j, k})) = sum/num_dir;
+                table_sat->at(array<size_t, 4>({indx, i, j, k})) = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, 's') - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, 's'))*vprime_probs.at(j);
+                table_rb->at(array<size_t, 4>({indx, i, j, k})) = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, 'r') - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, 'r'))*vprime_probs.at(j);
             }
         }
     }

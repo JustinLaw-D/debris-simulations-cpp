@@ -18,8 +18,8 @@ class NCell:
     def __init__(self, S, S_d, D, N_l, target_alts, alt_edges, lam, R_i=None, lam_rb=None, up_time=None, del_t=None, fail_t=None,
                  expl_rate_L=None, expl_rate_D=None, C_sat=None, sigma_sat=None, expl_rate_R=None, C_rb=None, sigma_rb=None, 
                  v=None, delta=None, alphaS=None, alphaD=None, alphaN=None, alphaR=None, P=None, m_s=None, m_rb=None, 
-                 AM_sat=None, AM_rb=None, tau_do=None, L_min=1e-3, L_max=1, num_L=10, chi_min=-2, chi_max=1.5, num_chi=10,
-                 update_period=1/12, min_lifetime=1/1000):
+                 AM_sat=None, AM_rb=None, tau_do=None, L_min=1e-3, L_max=1, num_L=10, chi_min=-2, chi_max=1.0, num_chi=10,
+                 update_period=1/12, min_lifetime=1/1000, seed=None):
         '''
         Constructor for NCell class
     
@@ -73,6 +73,7 @@ class NCell:
         num_chi : number of debris bins in log10(A/M) (default 10)
         update_period : how often to update the decay lifetimes (yr, default 1/12)
         min_lifetime : minimum decay lifetime permitted (yr, default 1/1000)
+        seed : seed used by PRNG (default OS random)
 
         Output(s):
         NCell instance
@@ -110,6 +111,8 @@ class NCell:
             P = [None]*len(S)
         if tau_do is None:
             tau_do = [None]*len(S)
+        if seed is None:
+            seed = int.from_bytes(os.urandom(16), 'big') # generate random seed
 
         self.alts = np.zeros(len(alt_edges)-1, dtype=np.double)
         self.dh = np.zeros(self.alts.shape, dtype=np.double)
@@ -127,6 +130,7 @@ class NCell:
         self.chi_edges = np.linspace(chi_min, chi_max, num=num_chi+1, dtype=np.double)
         self.update_period = update_period
         self.min_lifetime = min_lifetime
+        self.seed = seed
 
         for i in range(0, len(S)): # iterate through shells
 
@@ -286,7 +290,7 @@ class NCell:
         # write parameters
         csv_file = open(true_path + 'params.csv', 'w', newline='')
         csv_writer = csv.writer(csv_file, dialect='unix')
-        csv_writer.writerow([self.num_L, self.num_chi, self.num_cells, self.update_period, self.min_lifetime])
+        csv_writer.writerow([self.num_L, self.num_chi, self.num_cells, self.update_period, self.min_lifetime, self.seed])
         csv_file.close()
 
         # write easy arrays
@@ -335,6 +339,7 @@ class NCell:
             atmos.num_cells = int(row[2])
             atmos.update_period = float(row[3])
             atmos.min_lifetime = float(row[4])
+            atmos.seed = int(row[5])
         csv_file.close()
 
         # load in simple numpy arrays
