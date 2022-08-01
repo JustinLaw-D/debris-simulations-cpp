@@ -15,7 +15,7 @@ ax1.set_xlabel('time (yr)')
 ax1.set_ylabel('log(number)')
 ax1.set_yscale('log')
 for i in range(0, len(N)):
-    ax1.plot(t, N[i], label='SD'+str(i))
+    ax1.plot(t, N[i], label='N'+str(i))
 ax1.set_ylim(1, 1e5)
 ax1.set_xlim(0,T)
 ax1.legend()

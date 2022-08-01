@@ -205,8 +205,8 @@ void NCell::calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> 
             for (size_t k = 0; k < num_dir; k++) { // perform Monte Carlo integration
                 theta = distribution(generator)*M_PI; phi = distribution(generator)*2.0*M_PI; // get random direction
                 if ((v_min2 < 0.0) && (v_max2 < 0.0)) {sum += 0.0;}
-                else if (v_min2 < 0.0) {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(k), etyp);}
-                else {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(k), etyp) - vprime_cdf(sqrt(v_min2), v0, theta, phi, this->chi_ave->at(k), etyp);}
+                else if (v_min2 < 0.0) {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(j), etyp);}
+                else {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(j), etyp) - vprime_cdf(sqrt(v_min2), v0, theta, phi, this->chi_ave->at(j), etyp);}
             }
             vprime_probs.at(j) = sum/num_dir;
         }
@@ -220,8 +220,8 @@ void NCell::calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> 
                 double bin_bot_chi = this->chi_edges->at(k);
                 double bin_top_chi = this->chi_edges->at(k+1);
                 // total probability of being in this bin
-                table_sat->at(array<size_t, 4>({indx, i, j, k})) = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, 's') - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, 's'))*vprime_probs.at(j);
-                table_rb->at(array<size_t, 4>({indx, i, j, k})) = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, 'r') - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, 'r'))*vprime_probs.at(j);
+                table_sat->at(array<size_t, 4>({indx, i, j, k})) = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, 's') - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, 's'))*vprime_probs.at(k);
+                table_rb->at(array<size_t, 4>({indx, i, j, k})) = L_prob*(X_cdf(bin_top_chi, chi_min, chi_max, L_ave, 'r') - X_cdf(bin_bot_chi, chi_min, chi_max, L_ave, 'r'))*vprime_probs.at(k);
             }
         }
     }
