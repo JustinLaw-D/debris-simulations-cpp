@@ -88,8 +88,9 @@ NCell::NCell(string &filepath, size_t num_dir) {
     // generate uniformly distributed directions using Fibbonacci spiral
     double * phi = new double[this->num_dir];
     double * theta = new double[this->num_dir];
+    double int_part; // just a throwaway
     for (size_t i = 0; i < this->num_dir; i++) {
-        double x = modf(static_cast<double>(i)/GOLDEN, nullptr);
+        double x = modf(static_cast<double>(i)/GOLDEN, &int_part);
         double y = static_cast<double>(i)/static_cast<double>(num_dir);
         phi[i] = 2*M_PI*x; theta[i] = acos(1-2*y);
     } for (size_t i = 0; i < this->num_cells; i++) {

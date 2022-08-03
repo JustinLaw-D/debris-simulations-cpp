@@ -14,5 +14,5 @@ D_i = [0]
 N_i = 2.5e-8*V
 lam = 1000
 T = 50
-atmosphere = NCell([S_i], [S_di], [D_i], [N_i], [600], alt, [lam], min_lifetime=0, seed=1000)
+atmosphere = NCell([S_i], [S_di], [D_i], [N_i], [600], alt, [lam], min_lifetime=0)
 atmosphere.save('./data/', 'BasicStarlinkTest')
