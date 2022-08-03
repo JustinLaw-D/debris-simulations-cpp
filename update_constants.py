@@ -8,6 +8,7 @@ G = 6.67430e-11 # gravitational constant (N*m^2/kg^2)
 Me = 5.97219e24 # mass of Earth (kg)
 Re = 6371.0 # radius of Earth (km)
 SQRT2 = 1.41421356237309504880168872420969807856967187537694807317667973799 # square root of 2
+GOLDEN = 1.61803398874989484820458683436563811772030917980576286213544862270 # golden ratio
 SCOL = ";"
 ENDL = "\n"
 
@@ -72,7 +73,9 @@ consts_file.write("// physics constants" + ENDL)
 consts_file.write("const double G = " + str(G) + SCOL + ENDL)
 consts_file.write("const double Re = " + str(Re) + SCOL + ENDL)
 consts_file.write("const double Me = " + str(Me) + SCOL + ENDL)
+consts_file.write("// math constants" + ENDL)
 consts_file.write("const double SQRT2 = " + str(SQRT2) + SCOL + ENDL)
+consts_file.write("const double GOLDEN = " + str(GOLDEN) + SCOL + ENDL)
 consts_file.write(ENDL)
 consts_file.write("// atmospheric data" + ENDL)
 logz_str, logdenL_str, logdenM_str, logdenHL_str = str(logz[0]), str(logdenL[0]), str(logdenM[0]), str(logdenHL[0])

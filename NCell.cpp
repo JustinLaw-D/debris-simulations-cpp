@@ -3,7 +3,6 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
-#include <random>
 #include <experimental/filesystem>
 #include "ObjectsEvents.h"
 #include "Arrays.h"
@@ -21,15 +20,17 @@ NCell::NCell(string &filepath, size_t num_dir) {
 
     Input(s):
     filepath : string containing relative or absolute path to saved data
-    num_dir : number of random directions to sample (minimum 2)
+    num_dir : number of random directions to sample (can pass 0 to re-use previous number)
 
     Output(s):
     NCell instance
 
     Note(s): the intention is to create objects in Python, then pass them over to C++
-             via this saving/reading method
+             via this saving/reading method. if the object is coming from Python, num_dir
+             must be larger than zero
     */
     
+    this->num_dir = num_dir;
     ifstream param_file; // file containing basic NCell parameters
     param_file.open(filepath + string("params.csv"), ios::in); // open relevant file
     if (param_file.is_open()) {
@@ -44,8 +45,10 @@ NCell::NCell(string &filepath, size_t num_dir) {
         istringstream num_L_temp(row[0]); // need to make these into string streams to convert
         istringstream num_chi_temp(row[1]);
         istringstream num_cell_temp(row[2]);
-        istringstream seed_temp(row[5]);
-        num_L_temp >> this->num_L; num_chi_temp >> this->num_chi; num_cell_temp >> this->num_cells; seed_temp >> this->seed;
+        num_L_temp >> this->num_L; num_chi_temp >> this->num_chi; num_cell_temp >> this->num_cells;
+        if (num_dir == 0) {
+            istringstream num_dir_temp(row[5]); num_dir_temp >> this->num_dir;
+        }
         this->update_period = stod(row[3]);
         this->min_lifetime = stod(row[4]);
     } else {
@@ -82,11 +85,18 @@ NCell::NCell(string &filepath, size_t num_dir) {
     this->rb_coll_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
     this->sat_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
     this->rb_expl_prob_tables = new ArrayND<double, 4>(array<size_t,4>({this->num_cells, this->num_cells, this->num_L, this->num_chi}));
-    mt19937_64 generator(this->seed); // initialize PRNG engine
-    for (size_t i = 0; i < this->num_cells; i++) {
-        this->calc_prob_tables(this->sat_coll_prob_tables, this->rb_coll_prob_tables, i, 'c', num_dir, generator);
-        this->calc_prob_tables(this->sat_expl_prob_tables, this->rb_expl_prob_tables, i, 'e', num_dir, generator);
+    // generate uniformly distributed directions using Fibbonacci spiral
+    double * phi = new double[this->num_dir];
+    double * theta = new double[this->num_dir];
+    for (size_t i = 0; i < this->num_dir; i++) {
+        double x = modf(static_cast<double>(i)/GOLDEN, nullptr);
+        double y = static_cast<double>(i)/static_cast<double>(num_dir);
+        phi[i] = 2*M_PI*x; theta[i] = acos(1-2*y);
+    } for (size_t i = 0; i < this->num_cells; i++) {
+        this->calc_prob_tables(this->sat_coll_prob_tables, this->rb_coll_prob_tables, i, 'c', phi, theta);
+        this->calc_prob_tables(this->sat_expl_prob_tables, this->rb_expl_prob_tables, i, 'e', phi, theta);
     }
+    delete [] phi; delete [] theta;
 
     // calculate atmospheric decay lifetimes
     this->update_lifetimes(t->back());
@@ -134,7 +144,7 @@ void NCell::save(string &filepath, string &name, double gap) {
         param_file << "\"" << to_string(this->num_cells) << "\"" << ",";
         param_file << "\"" << to_string(this->update_period) << "\"" << ",";
         param_file << "\"" << to_string(this->min_lifetime) << "\"" << ",";
-        param_file << "\"" << to_string(this->seed) << "\"";
+        param_file << "\"" << to_string(this->num_dir) << "\"";
     } else {
         throw invalid_argument("NCell params.csv file could not be opened");
     }
@@ -168,8 +178,8 @@ void NCell::save(string &filepath, string &name, double gap) {
 
 }
 
-void NCell::calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> * table_rb, size_t indx, char etyp, size_t num_dir,
-                             mt19937_64 &generator) {
+void NCell::calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> * table_rb, size_t indx, char etyp,
+                             double * phi, double * theta) {
     /*
     calculates probability tables for explosion/collision debris generation in the system
 
@@ -178,8 +188,8 @@ void NCell::calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> 
     table_rb : probability table to fill for rocket body target
     indx : index of the cell to calculate probability table for
     etyp : event type, either collision ('c') or explosion ('e')
-    num_dir : number of random directions to sample
-    generator : PRNG engine
+    phi : list of phi components of directions
+    theta : list of theta components of directions
 
     Output(s): None
 
@@ -201,14 +211,12 @@ void NCell::calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> 
         uniform_real_distribution<double> distribution(0.0, 1.0); // standard distribution
         for (size_t j = 0; j < this->num_chi; j++) { // iterate through to fill vprime_cdf
             double sum = 0.0; // sum of all directions
-            double theta = 0.0; double phi = 0.0; // random directions
             for (size_t k = 0; k < num_dir; k++) { // perform Monte Carlo integration
-                theta = distribution(generator)*M_PI; phi = distribution(generator)*2.0*M_PI; // get random direction
                 if ((v_min2 < 0.0) && (v_max2 < 0.0)) {sum += 0.0;}
-                else if (v_min2 < 0.0) {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(j), etyp);}
-                else {sum += vprime_cdf(sqrt(v_max2), v0, theta, phi, this->chi_ave->at(j), etyp) - vprime_cdf(sqrt(v_min2), v0, theta, phi, this->chi_ave->at(j), etyp);}
+                else if (v_min2 < 0.0) {sum += vprime_cdf(sqrt(v_max2), v0, theta[k], phi[k], this->chi_ave->at(j), etyp);}
+                else {sum += vprime_cdf(sqrt(v_max2), v0, theta[k], phi[k], this->chi_ave->at(j), etyp) - vprime_cdf(sqrt(v_min2), v0, theta[k], phi[k], this->chi_ave->at(j), etyp);}
             }
-            vprime_probs.at(j) = sum/num_dir;
+            vprime_probs.at(j) = sum/static_cast<double>(num_dir);
         }
         for (size_t j = 0; j < this->num_L; j++) { // iterate through bins
             double bin_bot_L = this->logL_edges->at(j);

@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <string>
 #include <vector>
-#include <random>
 #include "ObjectsEvents.h"
 #include "Arrays.h"
 #pragma once
@@ -105,7 +104,7 @@ class NCell {
         Array1D<double> * logL_ave;
         Array1D<double> * chi_edges;
         Array1D<double> * chi_ave;
-        unsigned long long seed;
+        size_t num_dir;
         ArrayND<double, 4> * sat_coll_prob_tables;
         ArrayND<double, 4> * rb_coll_prob_tables;
         ArrayND<double, 4> * sat_expl_prob_tables;
@@ -116,8 +115,8 @@ class NCell {
         NCell(string &filepath, size_t num_dir); // constructor based on loading data from file
         void save(string &filepath, string &name, double gap); // function for saving data
         // calculates the probability tables
-        void calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> * table_rb, size_t indx, char etyp, size_t num_dir,
-                              mt19937_64 &generator);
+        void calc_prob_tables(ArrayND<double, 4> * table_sat, ArrayND<double, 4> * table_rb, size_t indx, char etyp,
+                              double * phi, double * theta);
         bool add_event(Event * event, double alt); // adds event to the system
         void dxdt(size_t time, bool upper, Array1D<double> **dSdt, Array1D<double> **dS_ddt, Array1D<double> **dDdt,
                   Array1D<double> **dRdt, ArrayND<double,3> &dNdt, double *dC_ldt, double *dC_nldt); // calculate rates of change
